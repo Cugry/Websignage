@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signage Board</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: rgba(18, 24, 33, .82);
+      --panel-strong: rgba(23, 31, 43, .94);
+      --line: rgba(255, 255, 255, .12);
+      --text: #f4f7fb;
+      --muted: #9ca8b8;
+      --accent: #4fd1c5;
+      --accent-2: #f7b955;
+      --danger: #ff6b6b;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .38);
+      color-scheme: dark;
+      font-family: "Segoe UI", "Yu Gothic UI", "Hiragino Sans", Meiryo, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        linear-gradient(120deg, rgba(79, 209, 197, .16), transparent 34%),
+        linear-gradient(310deg, rgba(247, 185, 85, .12), transparent 40%),
+        radial-gradient(circle at 50% 120%, rgba(255, 255, 255, .12), transparent 34%),
+        #0d1117;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: clamp(16px, 2.4vw, 34px);
+      height: 100vh;
+      padding: clamp(18px, 3vw, 42px);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 18px;
+      min-height: 120px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 56px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .08);
+      box-shadow: inset 0 1px 18px rgba(255, 255, 255, .07);
+      flex: 0 0 auto;
+    }
+
+    .mark svg {
+      width: 34px;
+      height: 34px;
+    }
+
+    .kicker {
+      margin: 0 0 4px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 56px);
+      line-height: 1;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .clock {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .time {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(42px, 7vw, 104px);
+      font-weight: 800;
+      line-height: .9;
+    }
+
+    .date {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: clamp(15px, 1.6vw, 22px);
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(300px, .82fr) minmax(430px, 1.18fr);
+      gap: clamp(16px, 2vw, 28px);
+      min-height: 0;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .weather {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: clamp(18px, 2.4vw, 30px);
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 56ch;
+    }
+
+    .weather-now {
+      display: grid;
+      align-content: center;
+      gap: 18px;
+      padding-block: 16px;
+    }
+
+    .weather-visual {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: clamp(14px, 2vw, 26px);
+    }
+
+    .weather-icon {
+      display: grid;
+      place-items: center;
+      width: clamp(92px, 13vw, 160px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .03)),
+        rgba(255, 255, 255, .05);
+      border: 1px solid var(--line);
+    }
+
+    .weather-icon svg {
+      width: 68%;
+      height: 68%;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .25));
+    }
+
+    .temp {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(56px, 10vw, 126px);
+      font-weight: 850;
+      line-height: .88;
+    }
+
+    .condition {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: clamp(17px, 1.8vw, 25px);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .06);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 7px;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(18px, 2.1vw, 28px);
+      line-height: 1;
+    }
+
+    .forecast {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .day {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+      padding: 12px 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .05);
+      min-width: 0;
+    }
+
+    .day-name {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .day svg {
+      width: 34px;
+      height: 34px;
+    }
+
+    .day-temp {
+      font-size: 13px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .news {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      padding: clamp(18px, 2.4vw, 30px);
+      overflow: hidden;
+    }
+
+    .ticker-wrap {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+
+    .items {
+      display: grid;
+      gap: 12px;
+      will-change: transform;
+    }
+
+    .news-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: start;
+      min-height: 92px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .055);
+    }
+
+    .bullet {
+      width: 10px;
+      height: 10px;
+      margin-top: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 0 5px rgba(247, 185, 85, .12);
+    }
+
+    .headline {
+      margin: 0;
+      font-size: clamp(17px, 2vw, 27px);
+      line-height: 1.28;
+      font-weight: 800;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 40px;
+    }
+
+    .marquee {
+      overflow: hidden;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .marquee span {
+      display: inline-block;
+      padding-left: 100%;
+      animation: marquee 38s linear infinite;
+    }
+
+    @keyframes marquee {
+      to { transform: translateX(-100%); }
+    }
+
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .07);
+    }
+
+    .icon-button:hover {
+      background: rgba(255, 255, 255, .13);
+    }
+
+    .drawer {
+      position: fixed;
+      inset: 0 0 0 auto;
+      width: min(420px, 100vw);
+      padding: 22px;
+      background: var(--panel-strong);
+      border-left: 1px solid var(--line);
+      box-shadow: -24px 0 80px rgba(0, 0, 0, .35);
+      transform: translateX(100%);
+      transition: transform .22s ease;
+      z-index: 5;
+      overflow: auto;
+    }
+
+    .drawer.open {
+      transform: translateX(0);
+    }
+
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .drawer h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .form {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(255, 255, 255, .08);
+      color: var(--text);
+      outline: 0;
+    }
+
+    textarea {
+      min-height: 112px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .primary, .secondary {
+      min-height: 44px;
+      border-radius: 8px;
+      font-weight: 800;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #072220;
+    }
+
+    .secondary {
+      background: rgba(255, 255, 255, .09);
+      border: 1px solid var(--line);
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    @media (max-width: 900px) {
+      html, body { overflow: auto; }
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+      .topbar, .main, .footer {
+        grid-template-columns: 1fr;
+      }
+      .clock {
+        text-align: left;
+      }
+      .main {
+        min-height: auto;
+      }
+      .weather, .news {
+        min-height: 520px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .weather-visual, .metric-grid, .forecast, .row, .action-row {
+        grid-template-columns: 1fr;
+      }
+      h1 {
+        white-space: normal;
+      }
+      .news-item {
+        min-height: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <path d="M10 41h44" stroke="#4fd1c5" stroke-width="5" stroke-linecap="round"/>
+            <path d="M18 32c0-8 6-14 14-14s14 6 14 14" stroke="#f7b955" stroke-width="5" stroke-linecap="round"/>
+            <path d="M32 8v5M49 15l-4 4M15 15l4 4" stroke="#f7b955" stroke-width="4" stroke-linecap="round"/>
+            <path d="M16 49h32" stroke="#f4f7fb" stroke-width="5" stroke-linecap="round" opacity=".72"/>
+          </svg>
+        </div>
+        <div>
+          <p class="kicker" id="boardKicker">Live Information</p>
+          <h1 id="boardTitle">サイネージボード</h1>
+        </div>
+      </div>
+      <div class="clock" aria-live="polite">
+        <div class="time" id="time">--:--</div>
+        <div class="date" id="date">----</div>
+      </div>
+    </header>
+
+    <section class="main">
+      <section class="panel weather" aria-label="天気">
+        <div class="section-label">
+          <span id="weatherPlace">Tokyo</span>
+          <span class="status" id="weatherStatus">読み込み中</span>
+        </div>
+        <div class="weather-now">
+          <div class="weather-visual">
+            <div class="weather-icon" id="weatherIcon" aria-hidden="true"></div>
+            <div>
+              <div class="temp" id="temp">--°</div>
+              <div class="condition" id="condition">--</div>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="metric"><span>降水確率</span><strong id="rain">--%</strong></div>
+            <div class="metric"><span>湿度</span><strong id="humidity">--%</strong></div>
+            <div class="metric"><span>風速</span><strong id="wind">-- m/s</strong></div>
+          </div>
+        </div>
+        <div class="forecast" id="forecast"></div>
+      </section>
+
+      <section class="panel news" aria-label="ニュース">
+        <div class="section-label">
+          <span>RSSニュース</span>
+          <span class="status" id="newsStatus">読み込み中</span>
+        </div>
+        <div class="ticker-wrap">
+          <div class="items" id="newsItems"></div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="footer">
+      <div class="marquee" aria-hidden="true"><span id="bottomTicker">ニュースを取得しています</span></div>
+      <button class="icon-button" id="openSettings" title="設定" aria-label="設定">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.05.05a2 2 0 0 1-2.83 2.83l-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.07A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.88.34l-.05.05a2 2 0 0 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.07A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.07A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.34l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.07A1.7 1.7 0 0 0 19.4 15Z"/>
+        </svg>
+      </button>
+    </footer>
+  </main>
+
+  <aside class="drawer" id="settings" aria-label="設定パネル">
+    <div class="drawer-head">
+      <h2>設定</h2>
+      <button class="icon-button" id="closeSettings" title="閉じる" aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form class="form" id="settingsForm">
+      <label>タイトル<input id="settingTitle" autocomplete="off"></label>
+      <label>サブタイトル<input id="settingKicker" autocomplete="off"></label>
+      <label>場所名<input id="settingPlace" autocomplete="off"></label>
+      <div class="row">
+        <label>緯度<input id="settingLat" inputmode="decimal"></label>
+        <label>経度<input id="settingLon" inputmode="decimal"></label>
+      </div>
+      <div class="row">
+        <label>天気更新 分<input id="settingWeatherMinutes" inputmode="numeric"></label>
+        <label>RSS更新 分<input id="settingNewsMinutes" inputmode="numeric"></label>
+      </div>
+      <label>RSS URL（1行に1件）<textarea id="settingFeeds" spellcheck="false"></textarea></label>
+      <label>RSS CORSプロキシ
+        <select id="settingProxy">
+          <option value="allorigins">AllOrigins</option>
+          <option value="rss2json">rss2json</option>
+          <option value="direct">直接取得</option>
+        </select>
+      </label>
+      <div class="action-row">
+        <button class="primary" type="submit">保存</button>
+        <button class="secondary" type="button" id="resetSettings">初期化</button>
+      </div>
+    </form>
+  </aside>
+
+  <script>
+    const DEFAULTS = {
+      title: "サイネージボード",
+      kicker: "Live Information",
+      place: "Tokyo",
+      latitude: 35.6812,
+      longitude: 139.7671,
+      weatherMinutes: 10,
+      newsMinutes: 12,
+      proxy: "allorigins",
+      feeds: [
+        "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja",
+        "https://www3.nhk.or.jp/rss/news/cat0.xml"
+      ]
+    };
+
+    const WEATHER_CODES = {
+      0: ["快晴", "sun"], 1: ["晴れ", "sun"], 2: ["一部くもり", "partly"], 3: ["くもり", "cloud"],
+      45: ["霧", "fog"], 48: ["霧氷", "fog"], 51: ["小雨", "rain"], 53: ["霧雨", "rain"],
+      55: ["強い霧雨", "rain"], 56: ["着氷性の霧雨", "rain"], 57: ["強い着氷性の霧雨", "rain"],
+      61: ["弱い雨", "rain"], 63: ["雨", "rain"], 65: ["強い雨", "rain"],
+      66: ["冷たい雨", "rain"], 67: ["強い冷たい雨", "rain"], 71: ["弱い雪", "snow"],
+      73: ["雪", "snow"], 75: ["強い雪", "snow"], 77: ["雪粒", "snow"],
+      80: ["にわか雨", "rain"], 81: ["にわか雨", "rain"], 82: ["強いにわか雨", "rain"],
+      85: ["にわか雪", "snow"], 86: ["強いにわか雪", "snow"], 95: ["雷雨", "storm"],
+      96: ["ひょうを伴う雷雨", "storm"], 99: ["強いひょうを伴う雷雨", "storm"]
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const state = {
+      settings: loadSettings(),
+      news: [],
+      newsOffset: 0,
+      timers: []
+    };
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("signage-settings") || "{}");
+        return { ...DEFAULTS, ...saved, feeds: Array.isArray(saved.feeds) ? saved.feeds : DEFAULTS.feeds };
+      } catch {
+        return { ...DEFAULTS };
+      }
+    }
+
+    function saveSettings(next) {
+      state.settings = next;
+      localStorage.setItem("signage-settings", JSON.stringify(next));
+    }
+
+    function weatherSvg(type) {
+      const common = 'fill="none" stroke-linecap="round" stroke-linejoin="round"';
+      const sun = '<circle cx="32" cy="32" r="11" fill="#f7b955"/><g stroke="#f7b955" stroke-width="4" stroke-linecap="round"><path d="M32 8v7M32 49v7M8 32h7M49 32h7M15 15l5 5M44 44l5 5M49 15l-5 5M20 44l-5 5"/></g>';
+      const cloud = '<path d="M22 44h25a10 10 0 0 0 0-20 15 15 0 0 0-29-2A11 11 0 0 0 22 44Z" fill="#d7e3ef"/>';
+      const rain = '<g stroke="#4fd1c5" stroke-width="4" stroke-linecap="round"><path d="M23 50l-3 6M34 50l-3 6M45 50l-3 6"/></g>';
+      const snow = '<g stroke="#d7e3ef" stroke-width="3" stroke-linecap="round"><path d="M25 51l-4 4M25 55l-4-4M38 51l-4 4M38 55l-4-4"/></g>';
+      const bolt = '<path d="M33 43 26 58l13-13h-8l6-12" fill="#f7b955"/>';
+      if (type === "sun") return `<svg viewBox="0 0 64 64">${sun}</svg>`;
+      if (type === "partly") return `<svg viewBox="0 0 64 64"><g transform="translate(-8 -8) scale(.9)">${sun}</g>${cloud}</svg>`;
+      if (type === "rain") return `<svg viewBox="0 0 64 64">${cloud}${rain}</svg>`;
+      if (type === "snow") return `<svg viewBox="0 0 64 64">${cloud}${snow}</svg>`;
+      if (type === "storm") return `<svg viewBox="0 0 64 64">${cloud}${bolt}</svg>`;
+      if (type === "fog") return `<svg viewBox="0 0 64 64">${cloud}<g ${common} stroke="#9ca8b8" stroke-width="4"><path d="M14 51h36M20 58h30"/></g></svg>`;
+      return `<svg viewBox="0 0 64 64">${cloud}</svg>`;
+    }
+
+    function applyChrome() {
+      $("boardTitle").textContent = state.settings.title;
+      $("boardKicker").textContent = state.settings.kicker;
+      $("weatherPlace").textContent = state.settings.place;
+      $("settingTitle").value = state.settings.title;
+      $("settingKicker").value = state.settings.kicker;
+      $("settingPlace").value = state.settings.place;
+      $("settingLat").value = state.settings.latitude;
+      $("settingLon").value = state.settings.longitude;
+      $("settingWeatherMinutes").value = state.settings.weatherMinutes;
+      $("settingNewsMinutes").value = state.settings.newsMinutes;
+      $("settingFeeds").value = state.settings.feeds.join("\n");
+      $("settingProxy").value = state.settings.proxy;
+    }
+
+    function updateClock() {
+      const now = new Date();
+      $("time").textContent = new Intl.DateTimeFormat("ja-JP", {
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+      }).format(now);
+      $("date").textContent = new Intl.DateTimeFormat("ja-JP", {
+        year: "numeric", month: "long", day: "numeric", weekday: "long"
+      }).format(now);
+    }
+
+    async function updateWeather() {
+      const { latitude, longitude } = state.settings;
+      $("weatherStatus").textContent = "更新中";
+      try {
+        const url = new URL("https://api.open-meteo.com/v1/forecast");
+        url.search = new URLSearchParams({
+          latitude, longitude,
+          current: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+          daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+          timezone: "auto",
+          forecast_days: "5"
+        }).toString();
+        const data = await fetch(url).then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        });
+        const current = data.current;
+        const [label, icon] = WEATHER_CODES[current.weather_code] || ["不明", "cloud"];
+        $("temp").textContent = `${Math.round(current.temperature_2m)}°`;
+        $("condition").textContent = label;
+        $("humidity").textContent = `${Math.round(current.relative_humidity_2m)}%`;
+        $("wind").textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+        $("rain").textContent = `${data.daily.precipitation_probability_max[0] ?? "--"}%`;
+        $("weatherIcon").innerHTML = weatherSvg(icon);
+        $("forecast").innerHTML = data.daily.time.map((date, index) => {
+          const [dayLabel, dayIcon] = WEATHER_CODES[data.daily.weather_code[index]] || ["-", "cloud"];
+          const weekday = new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(new Date(`${date}T00:00:00`));
+          const high = Math.round(data.daily.temperature_2m_max[index]);
+          const low = Math.round(data.daily.temperature_2m_min[index]);
+          return `<div class="day" title="${dayLabel}"><div class="day-name">${weekday}</div>${weatherSvg(dayIcon)}<div class="day-temp">${low}° / ${high}°</div></div>`;
+        }).join("");
+        $("weatherStatus").textContent = `更新 ${new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit" }).format(new Date())}`;
+      } catch (error) {
+        $("weatherStatus").innerHTML = `<span class="error">天気を取得できません</span>`;
+      }
+    }
+
+    function proxyUrl(feed) {
+      if (state.settings.proxy === "direct") return feed;
+      if (state.settings.proxy === "rss2json") return `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`;
+      return `https://api.allorigins.win/raw?url=${encodeURIComponent(feed)}`;
+    }
+
+    async function readFeed(feed) {
+      const response = await fetch(proxyUrl(feed));
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (state.settings.proxy === "rss2json") {
+        const json = await response.json();
+        return (json.items || []).map((item) => ({
+          title: item.title,
+          link: item.link,
+          source: json.feed?.title || new URL(feed).hostname,
+          date: item.pubDate || item.published
+        }));
+      }
+      const text = await response.text();
+      const doc = new DOMParser().parseFromString(text, "text/xml");
+      return [...doc.querySelectorAll("item, entry")].map((item) => ({
+        title: textOf(item, "title"),
+        link: textOf(item, "link") || item.querySelector("link")?.getAttribute("href") || feed,
+        source: textOf(doc, "channel > title") || new URL(feed).hostname,
+        date: textOf(item, "pubDate") || textOf(item, "updated") || textOf(item, "published")
+      }));
+    }
+
+    function textOf(root, selector) {
+      return root.querySelector(selector)?.textContent?.trim() || "";
+    }
+
+    function formatNewsDate(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+    }
+
+    async function updateNews() {
+      $("newsStatus").textContent = "更新中";
+      try {
+        const settled = await Promise.allSettled(state.settings.feeds.filter(Boolean).map(readFeed));
+        const items = settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+        state.news = items
+          .filter((item) => item.title)
+          .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+          .slice(0, 24);
+        renderNews();
+        $("newsStatus").textContent = state.news.length
+          ? `${state.news.length}件 更新 ${new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit" }).format(new Date())}`
+          : "記事がありません";
+      } catch {
+        $("newsStatus").innerHTML = `<span class="error">RSSを取得できません</span>`;
+      }
+    }
+
+    function renderNews() {
+      const items = state.news.length ? state.news : [{ title: "RSSニュースを待機しています", source: "Signage", date: "" }];
+      $("newsItems").innerHTML = items.map((item) => `
+        <article class="news-item">
+          <span class="bullet"></span>
+          <div>
+            <h3 class="headline">${escapeHtml(item.title)}</h3>
+            <div class="meta"><span>${escapeHtml(item.source || "")}</span><span>${escapeHtml(formatNewsDate(item.date))}</span></div>
+          </div>
+        </article>
+      `).join("");
+      $("bottomTicker").textContent = items.map((item) => item.title).join("  /  ");
+      state.newsOffset = 0;
+    }
+
+    function scrollNews() {
+      const wrap = document.querySelector(".ticker-wrap");
+      const list = $("newsItems");
+      if (!wrap || !list || list.scrollHeight <= wrap.clientHeight) {
+        list.style.transform = "translateY(0)";
+        return;
+      }
+      state.newsOffset = (state.newsOffset + .38) % (list.scrollHeight + 40);
+      list.style.transform = `translateY(${-state.newsOffset}px)`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[char]));
+    }
+
+    function resetTimers() {
+      state.timers.forEach(clearInterval);
+      state.timers = [
+        setInterval(updateClock, 1000),
+        setInterval(updateWeather, Math.max(1, Number(state.settings.weatherMinutes)) * 60000),
+        setInterval(updateNews, Math.max(1, Number(state.settings.newsMinutes)) * 60000),
+        setInterval(scrollNews, 40)
+      ];
+    }
+
+    function boot() {
+      applyChrome();
+      updateClock();
+      updateWeather();
+      updateNews();
+      resetTimers();
+      $("openSettings").addEventListener("click", () => $("settings").classList.add("open"));
+      $("closeSettings").addEventListener("click", () => $("settings").classList.remove("open"));
+      $("resetSettings").addEventListener("click", () => {
+        saveSettings({ ...DEFAULTS });
+        applyChrome();
+        updateWeather();
+        updateNews();
+        resetTimers();
+      });
+      $("settingsForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        saveSettings({
+          title: $("settingTitle").value.trim() || DEFAULTS.title,
+          kicker: $("settingKicker").value.trim() || DEFAULTS.kicker,
+          place: $("settingPlace").value.trim() || DEFAULTS.place,
+          latitude: Number($("settingLat").value) || DEFAULTS.latitude,
+          longitude: Number($("settingLon").value) || DEFAULTS.longitude,
+          weatherMinutes: Math.max(1, Number($("settingWeatherMinutes").value) || DEFAULTS.weatherMinutes),
+          newsMinutes: Math.max(1, Number($("settingNewsMinutes").value) || DEFAULTS.newsMinutes),
+          proxy: $("settingProxy").value,
+          feeds: $("settingFeeds").value.split("\n").map((line) => line.trim()).filter(Boolean)
+        });
+        applyChrome();
+        updateWeather();
+        updateNews();
+        resetTimers();
+        $("settings").classList.remove("open");
+      });
+    }
+
+    boot();
+  </script>
+</body>
+</html>
