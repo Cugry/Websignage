@@ -145,7 +145,8 @@
 
     .weather {
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr auto auto;
+      gap: 10px;
       padding: clamp(18px, 2.4vw, 30px);
     }
 
@@ -219,12 +220,22 @@
       gap: 10px;
     }
 
+    .astro-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
     .metric {
       min-width: 0;
       padding: 14px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: rgba(255, 255, 255, .06);
+    }
+
+    .astro-grid .metric {
+      padding: 12px 10px;
     }
 
     .metric span {
@@ -240,6 +251,34 @@
       font-variant-numeric: tabular-nums;
       font-size: clamp(18px, 2.1vw, 28px);
       line-height: 1;
+    }
+
+    .astro-grid .metric strong {
+      font-size: clamp(15px, 1.6vw, 22px);
+      white-space: nowrap;
+    }
+
+    .moon-phase {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 8px;
+      margin-top: 7px;
+      min-width: 0;
+    }
+
+    .moon-phase svg {
+      width: 34px;
+      height: 34px;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .28));
+      flex: 0 0 auto;
+    }
+
+    .moon-phase strong {
+      margin-top: 0;
+      font-size: 13px;
+      line-height: 1.15;
+      white-space: normal;
     }
 
     .forecast {
@@ -491,7 +530,7 @@
     }
 
     @media (max-width: 560px) {
-      .weather-visual, .metric-grid, .forecast, .row, .action-row {
+      .weather-visual, .metric-grid, .astro-grid, .forecast, .row, .action-row {
         grid-template-columns: 1fr;
       }
       h1 {
@@ -547,6 +586,13 @@
           </div>
         </div>
         <div class="forecast" id="forecast"></div>
+        <div class="astro-grid">
+          <div class="metric"><span>日の出</span><strong id="sunrise">--:--</strong></div>
+          <div class="metric"><span>日の入</span><strong id="sunset">--:--</strong></div>
+          <div class="metric"><span>月の出</span><strong id="moonrise">--:--</strong></div>
+          <div class="metric"><span>月の入</span><strong id="moonset">--:--</strong></div>
+          <div class="metric"><span>月相</span><div class="moon-phase" id="moonPhase" title="月齢 --"><strong>--</strong></div></div>
+        </div>
       </section>
 
       <section class="panel news" aria-label="ニュース">
@@ -711,7 +757,7 @@
         url.search = new URLSearchParams({
           latitude, longitude,
           current: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
-          daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+          daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
           timezone: "auto",
           forecast_days: "5"
         }).toString();
@@ -727,6 +773,12 @@
         $("wind").textContent = `${Math.round(current.wind_speed_10m)} km/h`;
         $("rain").textContent = `${data.daily.precipitation_probability_max[0] ?? "--"}%`;
         $("weatherIcon").innerHTML = weatherSvg(icon);
+        const astro = getAstronomy(new Date(), Number(latitude), Number(longitude));
+        $("sunrise").textContent = formatClock(data.daily.sunrise?.[0]);
+        $("sunset").textContent = formatClock(data.daily.sunset?.[0]);
+        $("moonrise").textContent = formatClock(astro.moonrise);
+        $("moonset").textContent = formatClock(astro.moonset);
+        renderMoonPhase(astro.moonAge);
         $("forecast").innerHTML = data.daily.time.map((date, index) => {
           const [dayLabel, dayIcon] = WEATHER_CODES[data.daily.weather_code[index]] || ["-", "cloud"];
           const weekday = new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(new Date(`${date}T00:00:00`));
@@ -738,6 +790,143 @@
       } catch (error) {
         $("weatherStatus").innerHTML = `<span class="error">天気を取得できません</span>`;
       }
+    }
+
+    function formatClock(value) {
+      if (!value) return "--:--";
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return "--:--";
+      return new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+    }
+
+    function getAstronomy(date, latitude, longitude) {
+      const moonTimes = getMoonTimes(date, latitude, longitude);
+      return {
+        ...moonTimes,
+        moonAge: getMoonAge(date)
+      };
+    }
+
+    function getMoonAge(date) {
+      const synodicMonth = 29.530588853;
+      const knownNewMoon = Date.UTC(2000, 0, 6, 18, 14);
+      const days = (date.getTime() - knownNewMoon) / 86400000;
+      return ((days % synodicMonth) + synodicMonth) % synodicMonth;
+    }
+
+    function renderMoonPhase(age) {
+      const target = $("moonPhase");
+      const label = moonPhaseLabel(age);
+      const ageText = `月齢 ${age.toFixed(1)}日`;
+      target.title = `${label} / ${ageText}`;
+      target.setAttribute("aria-label", `${label}、${ageText}`);
+      target.innerHTML = `${moonPhaseSvg(age)}<strong>${label}</strong>`;
+    }
+
+    function moonPhaseLabel(age) {
+      const phase = age / 29.530588853;
+      if (phase < .03 || phase >= .97) return "新月";
+      if (phase < .22) return "三日月";
+      if (phase < .28) return "上弦";
+      if (phase < .47) return "十三夜";
+      if (phase < .53) return "満月";
+      if (phase < .72) return "寝待月";
+      if (phase < .78) return "下弦";
+      return "有明月";
+    }
+
+    function moonPhaseSvg(age) {
+      const phase = age / 29.530588853;
+      const radius = 26;
+      const center = 32;
+      const light = "#f4f7fb";
+      const dark = "#111722";
+      const rim = "#9ca8b8";
+      const illuminatedPath = moonIlluminatedPath(phase, center, radius);
+      return `
+        <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+          <defs>
+            <clipPath id="moon-disc-clip"><circle cx="${center}" cy="${center}" r="${radius}"/></clipPath>
+          </defs>
+          <circle cx="${center}" cy="${center}" r="${radius}" fill="${dark}"/>
+          <path d="${illuminatedPath}" fill="${light}" clip-path="url(#moon-disc-clip)"/>
+          <circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="${rim}" stroke-width="2" opacity=".74"/>
+        </svg>
+      `;
+    }
+
+    function moonIlluminatedPath(phase, center, radius) {
+      const normalized = ((phase % 1) + 1) % 1;
+      const epsilon = .015;
+      const top = center - radius;
+      const bottom = center + radius;
+      if (normalized < epsilon || normalized > 1 - epsilon) return "";
+      if (Math.abs(normalized - .5) < epsilon) {
+        return `M ${center} ${top} A ${radius} ${radius} 0 1 1 ${center} ${bottom} A ${radius} ${radius} 0 1 1 ${center} ${top} Z`;
+      }
+
+      const curveRadius = Math.max(.01, radius * Math.abs(Math.cos(2 * Math.PI * normalized)));
+      if (normalized < .25) {
+        return `M ${center} ${top} A ${radius} ${radius} 0 0 1 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 0 ${center} ${top} Z`;
+      }
+      if (normalized < .5) {
+        return `M ${center} ${top} A ${radius} ${radius} 0 0 1 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 1 ${center} ${top} Z`;
+      }
+      if (normalized < .75) {
+        return `M ${center} ${top} A ${radius} ${radius} 0 0 0 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 1 ${center} ${top} Z`;
+      }
+      return `M ${center} ${top} A ${radius} ${radius} 0 0 0 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 0 ${center} ${top} Z`;
+    }
+
+    function getMoonTimes(date, latitude, longitude) {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const times = [];
+      for (let hour = 0; hour <= 24; hour += 1) {
+        const sample = new Date(start.getTime() + hour * 3600000);
+        times.push({ date: sample, altitude: moonAltitude(sample, latitude, longitude) });
+      }
+
+      const horizon = 0.125 * Math.PI / 180;
+      let moonrise = null;
+      let moonset = null;
+      for (let i = 1; i < times.length; i += 1) {
+        const previous = times[i - 1].altitude - horizon;
+        const current = times[i].altitude - horizon;
+        if (previous === 0 || current === 0 || previous * current <= 0) {
+          const fraction = Math.abs(previous) / (Math.abs(previous) + Math.abs(current));
+          const eventTime = new Date(times[i - 1].date.getTime() + fraction * 3600000);
+          if (previous < current && !moonrise) moonrise = eventTime;
+          if (previous > current && !moonset) moonset = eventTime;
+        }
+      }
+      return { moonrise, moonset };
+    }
+
+    function moonAltitude(date, latitude, longitude) {
+      const rad = Math.PI / 180;
+      const day = dateToJulianDays(date);
+      const eclipticLongitude = rad * (218.316 + 13.176396 * day);
+      const meanAnomaly = rad * (134.963 + 13.064993 * day);
+      const distanceArgument = rad * (93.272 + 13.229350 * day);
+      const longitudeMoon = eclipticLongitude + rad * 6.289 * Math.sin(meanAnomaly);
+      const latitudeMoon = rad * 5.128 * Math.sin(distanceArgument);
+      const obliquity = rad * 23.4397;
+      const rightAscension = Math.atan2(
+        Math.sin(longitudeMoon) * Math.cos(obliquity) - Math.tan(latitudeMoon) * Math.sin(obliquity),
+        Math.cos(longitudeMoon)
+      );
+      const declination = Math.asin(
+        Math.sin(latitudeMoon) * Math.cos(obliquity) + Math.cos(latitudeMoon) * Math.sin(obliquity) * Math.sin(longitudeMoon)
+      );
+      const siderealTime = rad * (280.16 + 360.9856235 * day) + longitude * rad;
+      const hourAngle = siderealTime - rightAscension;
+      const lat = latitude * rad;
+      return Math.asin(Math.sin(lat) * Math.sin(declination) + Math.cos(lat) * Math.cos(declination) * Math.cos(hourAngle));
+    }
+
+    function dateToJulianDays(date) {
+      return date.getTime() / 86400000 - 10957.5;
     }
 
     function proxyStrategies() {
