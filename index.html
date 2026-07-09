@@ -595,8 +595,10 @@
       <label>RSS URL（1行に1件）<textarea id="settingFeeds" spellcheck="false"></textarea></label>
       <label>RSS CORSプロキシ
         <select id="settingProxy">
+          <option value="auto">自動</option>
           <option value="allorigins">AllOrigins</option>
           <option value="rss2json">rss2json</option>
+          <option value="jina">Jina Reader</option>
           <option value="direct">直接取得</option>
         </select>
       </label>
@@ -616,9 +618,10 @@
       longitude: 139.7671,
       weatherMinutes: 10,
       newsMinutes: 12,
-      proxy: "allorigins",
+      proxy: "auto",
       feeds: [
         "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja",
+        "https://news.yahoo.co.jp/rss/topics/top-picks.xml",
         "https://www3.nhk.or.jp/rss/news/cat0.xml"
       ]
     };
@@ -685,7 +688,9 @@
       $("settingWeatherMinutes").value = state.settings.weatherMinutes;
       $("settingNewsMinutes").value = state.settings.newsMinutes;
       $("settingFeeds").value = state.settings.feeds.join("\n");
-      $("settingProxy").value = state.settings.proxy;
+      $("settingProxy").value = ["auto", "allorigins", "rss2json", "jina", "direct"].includes(state.settings.proxy)
+        ? state.settings.proxy
+        : "auto";
     }
 
     function updateClock() {
@@ -735,32 +740,75 @@
       }
     }
 
-    function proxyUrl(feed) {
-      if (state.settings.proxy === "direct") return feed;
-      if (state.settings.proxy === "rss2json") return `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`;
-      return `https://api.allorigins.win/raw?url=${encodeURIComponent(feed)}`;
+    function proxyStrategies() {
+      const selected = state.settings.proxy || "auto";
+      const strategies = {
+        direct: (feed) => ({ kind: "xml", name: "直接取得", url: feed }),
+        allorigins: (feed) => ({ kind: "xml", name: "AllOrigins", url: `https://api.allorigins.win/raw?url=${encodeURIComponent(feed)}` }),
+        rss2json: (feed) => ({ kind: "json", name: "rss2json", url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}` }),
+        jina: (feed) => ({ kind: "markdown", name: "Jina Reader", url: `https://r.jina.ai/http://r.jina.ai/http://${feed}` })
+      };
+      if (selected === "auto") return [strategies.allorigins, strategies.rss2json, strategies.jina, strategies.direct];
+      const picked = strategies[selected] || strategies.allorigins;
+      return [picked, ...[strategies.allorigins, strategies.rss2json, strategies.jina, strategies.direct].filter((strategy) => strategy !== picked)];
     }
 
     async function readFeed(feed) {
-      const response = await fetch(proxyUrl(feed));
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      if (state.settings.proxy === "rss2json") {
-        const json = await response.json();
-        return (json.items || []).map((item) => ({
-          title: item.title,
-          link: item.link,
-          source: json.feed?.title || new URL(feed).hostname,
-          date: item.pubDate || item.published
-        }));
+      const errors = [];
+      for (const buildStrategy of proxyStrategies()) {
+        const strategy = buildStrategy(feed);
+        try {
+          const response = await fetch(strategy.url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          if (strategy.kind === "json") {
+            const json = await response.json();
+            if (json.status && json.status !== "ok") throw new Error(json.message || json.status);
+            const items = (json.items || []).map((item) => ({
+              title: item.title,
+              link: item.link,
+              source: json.feed?.title || new URL(feed).hostname,
+              date: item.pubDate || item.published
+            }));
+            if (items.length) return items;
+            throw new Error("記事なし");
+          }
+          const text = await response.text();
+          if (strategy.kind === "markdown") {
+            const items = parseMarkdownFeed(text, feed);
+            if (items.length) return items;
+            throw new Error("記事なし");
+          }
+          const doc = new DOMParser().parseFromString(text, "text/xml");
+          if (doc.querySelector("parsererror")) throw new Error("XML解析エラー");
+          const items = [...doc.querySelectorAll("item, entry")].map((item) => ({
+            title: textOf(item, "title"),
+            link: textOf(item, "link") || item.querySelector("link")?.getAttribute("href") || feed,
+            source: textOf(doc, "channel > title") || textOf(doc, "feed > title") || new URL(feed).hostname,
+            date: textOf(item, "pubDate") || textOf(item, "updated") || textOf(item, "published")
+          }));
+          if (items.length) return items;
+          throw new Error("記事なし");
+        } catch (error) {
+          errors.push(`${strategy.name}: ${error.message}`);
+        }
       }
-      const text = await response.text();
-      const doc = new DOMParser().parseFromString(text, "text/xml");
-      return [...doc.querySelectorAll("item, entry")].map((item) => ({
-        title: textOf(item, "title"),
-        link: textOf(item, "link") || item.querySelector("link")?.getAttribute("href") || feed,
-        source: textOf(doc, "channel > title") || new URL(feed).hostname,
-        date: textOf(item, "pubDate") || textOf(item, "updated") || textOf(item, "published")
-      }));
+      throw new Error(errors.join(" / "));
+    }
+
+    function parseMarkdownFeed(text, feed) {
+      const source = text.match(/^Title:\s*(.+)$/m)?.[1]?.trim() || new URL(feed).hostname;
+      const items = [];
+      const itemPattern = /^### \[([^\]]+)\]\(([^)]+)\)\s*\n+\[[^\]]+\]\([^)]+\)\s*\n+([^\n]+)/gm;
+      let match;
+      while ((match = itemPattern.exec(text)) !== null) {
+        items.push({
+          title: match[1].trim(),
+          link: match[2].trim(),
+          source,
+          date: match[3].trim()
+        });
+      }
+      return items;
     }
 
     function textOf(root, selector) {
@@ -778,6 +826,7 @@
       try {
         const settled = await Promise.allSettled(state.settings.feeds.filter(Boolean).map(readFeed));
         const items = settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+        const failures = settled.filter((result) => result.status === "rejected").length;
         state.news = items
           .filter((item) => item.title)
           .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
@@ -785,7 +834,9 @@
         renderNews();
         $("newsStatus").textContent = state.news.length
           ? `${state.news.length}件 更新 ${new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit" }).format(new Date())}`
-          : "記事がありません";
+          : failures
+            ? "RSSを取得できません"
+            : "記事がありません";
       } catch {
         $("newsStatus").innerHTML = `<span class="error">RSSを取得できません</span>`;
       }
@@ -850,7 +901,22 @@
       });
       $("settingsForm").addEventListener("submit", (event) => {
         event.preventDefault();
-        saveSettings({
+        saveSettings(readSettingsForm());
+        applyChrome();
+        updateWeather();
+        updateNews();
+        resetTimers();
+        $("settings").classList.remove("open");
+      });
+      $("settingProxy").addEventListener("change", () => {
+        saveSettings(readSettingsForm());
+        updateNews();
+        resetTimers();
+      });
+    }
+
+    function readSettingsForm() {
+      return {
           title: $("settingTitle").value.trim() || DEFAULTS.title,
           kicker: $("settingKicker").value.trim() || DEFAULTS.kicker,
           place: $("settingPlace").value.trim() || DEFAULTS.place,
@@ -860,13 +926,7 @@
           newsMinutes: Math.max(1, Number($("settingNewsMinutes").value) || DEFAULTS.newsMinutes),
           proxy: $("settingProxy").value,
           feeds: $("settingFeeds").value.split("\n").map((line) => line.trim()).filter(Boolean)
-        });
-        applyChrome();
-        updateWeather();
-        updateNews();
-        resetTimers();
-        $("settings").classList.remove("open");
-      });
+        };
     }
 
     boot();
