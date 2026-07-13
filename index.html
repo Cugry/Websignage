@@ -529,6 +529,256 @@
       }
     }
 
+    @media (min-width: 901px) and (max-height: 1100px) {
+      .app {
+        gap: clamp(12px, 1.5vh, 20px);
+        padding: clamp(18px, 2.4vh, 28px) clamp(28px, 3vw, 56px);
+      }
+
+      .topbar {
+        min-height: 86px;
+        align-items: center;
+      }
+
+      .mark {
+        width: 52px;
+        height: 52px;
+      }
+
+      .mark svg {
+        width: 32px;
+        height: 32px;
+      }
+
+      h1 {
+        font-size: clamp(30px, 3vw, 48px);
+      }
+
+      .time {
+        font-size: clamp(54px, 5.6vw, 88px);
+      }
+
+      .date {
+        margin-top: 8px;
+      }
+
+      .main {
+        gap: clamp(14px, 1.5vw, 24px);
+      }
+
+      .weather, .news {
+        padding: clamp(16px, 1.8vw, 24px);
+      }
+
+      .weather {
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+        gap: 8px;
+        overflow: hidden;
+      }
+
+      .weather-now {
+        gap: 12px;
+        padding-block: 4px;
+        align-content: center;
+      }
+
+      .weather-icon {
+        width: clamp(96px, 9vw, 132px);
+      }
+
+      .temp {
+        font-size: clamp(64px, 7vw, 104px);
+      }
+
+      .condition {
+        margin-top: 6px;
+        font-size: clamp(16px, 1.4vw, 22px);
+      }
+
+      .metric-grid {
+        gap: 8px;
+      }
+
+      .metric {
+        padding: 10px 12px;
+      }
+
+      .metric strong {
+        margin-top: 5px;
+        font-size: clamp(18px, 1.7vw, 25px);
+      }
+
+      .forecast {
+        gap: 7px;
+      }
+
+      .day {
+        gap: 5px;
+        padding: 8px 6px;
+      }
+
+      .day svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      .day-temp {
+        font-size: 12px;
+      }
+
+      .astro-grid {
+        gap: 7px;
+      }
+
+      .astro-grid .metric {
+        padding: 8px 8px;
+      }
+
+      .astro-grid .metric strong {
+        font-size: clamp(14px, 1.25vw, 18px);
+      }
+
+      .moon-phase {
+        gap: 6px;
+        margin-top: 5px;
+      }
+
+      .moon-phase svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      .moon-phase strong {
+        font-size: 12px;
+      }
+
+      .footer {
+        min-height: 32px;
+      }
+    }
+
+    @media (min-width: 901px) and (max-height: 700px) {
+      .app {
+        gap: 10px;
+        padding: 14px 28px;
+      }
+
+      .topbar {
+        min-height: 68px;
+      }
+
+      .mark {
+        width: 46px;
+        height: 46px;
+      }
+
+      .mark svg {
+        width: 28px;
+        height: 28px;
+      }
+
+      .kicker {
+        font-size: 11px;
+        margin-bottom: 2px;
+      }
+
+      h1 {
+        font-size: clamp(28px, 3.2vw, 42px);
+      }
+
+      .time {
+        font-size: clamp(48px, 6vw, 72px);
+      }
+
+      .date {
+        margin-top: 5px;
+        font-size: 14px;
+      }
+
+      .weather, .news {
+        padding: 14px;
+      }
+
+      .section-label {
+        font-size: 12px;
+      }
+
+      .weather {
+        gap: 6px;
+      }
+
+      .weather-now {
+        gap: 10px;
+        padding-block: 2px;
+      }
+
+      .weather-icon {
+        width: clamp(82px, 10vw, 110px);
+      }
+
+      .temp {
+        font-size: clamp(52px, 8vw, 86px);
+      }
+
+      .condition {
+        margin-top: 4px;
+        font-size: 16px;
+      }
+
+      .metric {
+        padding: 8px 9px;
+      }
+
+      .metric span {
+        font-size: 11px;
+      }
+
+      .metric strong {
+        margin-top: 4px;
+        font-size: clamp(16px, 2vw, 22px);
+      }
+
+      .day {
+        gap: 3px;
+        padding: 6px 5px;
+      }
+
+      .day-name, .day-temp {
+        font-size: 11px;
+      }
+
+      .day svg {
+        width: 23px;
+        height: 23px;
+      }
+
+      .astro-grid .metric {
+        padding: 6px 6px;
+      }
+
+      .astro-grid .metric strong {
+        font-size: 13px;
+      }
+
+      .moon-phase {
+        gap: 5px;
+        margin-top: 3px;
+      }
+
+      .moon-phase svg {
+        width: 23px;
+        height: 23px;
+      }
+
+      .moon-phase strong {
+        font-size: 11px;
+      }
+
+      .footer {
+        min-height: 28px;
+      }
+    }
+
     @media (max-width: 560px) {
       .weather-visual, .metric-grid, .astro-grid, .forecast, .row, .action-row {
         grid-template-columns: 1fr;
