@@ -89,25 +89,6 @@
       height: 34px;
     }
 
-    .kicker {
-      margin: 0 0 4px;
-      color: var(--accent);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(24px, 4vw, 56px);
-      line-height: 1;
-      letter-spacing: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
     .clock {
       text-align: center;
       white-space: nowrap;
@@ -116,15 +97,16 @@
 
     .time {
       font-variant-numeric: tabular-nums;
-      font-size: clamp(42px, 7vw, 104px);
-      font-weight: 800;
+      font-size: clamp(58px, 8.4vw, 132px);
+      font-weight: 850;
       line-height: .9;
     }
 
     .date {
-      margin-top: 12px;
       color: var(--muted);
-      font-size: clamp(15px, 1.6vw, 22px);
+      font-size: clamp(21px, 2vw, 34px);
+      font-weight: 700;
+      line-height: 1.2;
     }
 
     .main {
@@ -331,9 +313,18 @@
     }
 
     .items {
-      display: grid;
-      gap: 12px;
+      --news-gap: 12px;
+      display: block;
       will-change: transform;
+    }
+
+    .news-sequence {
+      display: grid;
+      gap: var(--news-gap);
+    }
+
+    .news-sequence + .news-sequence {
+      margin-top: var(--news-gap);
     }
 
     .news-item {
@@ -537,16 +528,12 @@
         height: 32px;
       }
 
-      h1 {
-        font-size: clamp(30px, 3vw, 48px);
-      }
-
       .time {
-        font-size: clamp(54px, 5.6vw, 88px);
+        font-size: clamp(72px, 7vw, 112px);
       }
 
       .date {
-        margin-top: 8px;
+        font-size: clamp(20px, 1.8vw, 28px);
       }
 
       .main {
@@ -665,22 +652,12 @@
         height: 28px;
       }
 
-      .kicker {
-        font-size: 11px;
-        margin-bottom: 2px;
-      }
-
-      h1 {
-        font-size: clamp(28px, 3.2vw, 42px);
-      }
-
       .time {
-        font-size: clamp(48px, 6vw, 72px);
+        font-size: clamp(62px, 7.2vw, 92px);
       }
 
       .date {
-        margin-top: 5px;
-        font-size: 14px;
+        font-size: 18px;
       }
 
       .weather, .news {
@@ -771,9 +748,6 @@
       .weather-visual, .metric-grid, .astro-grid, .forecast, .row, .action-row {
         grid-template-columns: 1fr;
       }
-      h1 {
-        white-space: normal;
-      }
       .news-item {
         min-height: 0;
       }
@@ -792,14 +766,10 @@
             <path d="M16 49h32" stroke="#f4f7fb" stroke-width="5" stroke-linecap="round" opacity=".72"/>
           </svg>
         </div>
-        <div>
-          <p class="kicker" id="boardKicker">Live Information</p>
-          <h1 id="boardTitle">サイネージボード</h1>
-        </div>
+        <div class="date" id="date">----</div>
       </div>
       <div class="clock" aria-live="polite">
         <div class="time" id="time">--:--</div>
-        <div class="date" id="date">----</div>
       </div>
       <div aria-hidden="true"></div>
     </header>
@@ -865,8 +835,6 @@
       </button>
     </div>
     <form class="form" id="settingsForm">
-      <label>タイトル<input id="settingTitle" autocomplete="off"></label>
-      <label>サブタイトル<input id="settingKicker" autocomplete="off"></label>
       <label>場所名<input id="settingPlace" autocomplete="off"></label>
       <div class="row">
         <label>緯度<input id="settingLat" inputmode="decimal"></label>
@@ -961,11 +929,7 @@
     }
 
     function applyChrome() {
-      $("boardTitle").textContent = state.settings.title;
-      $("boardKicker").textContent = state.settings.kicker;
       $("weatherPlace").textContent = state.settings.place;
-      $("settingTitle").value = state.settings.title;
-      $("settingKicker").value = state.settings.kicker;
       $("settingPlace").value = state.settings.place;
       $("settingLat").value = state.settings.latitude;
       $("settingLon").value = state.settings.longitude;
@@ -1271,7 +1235,16 @@
 
     function renderNews() {
       const items = state.news.length ? state.news : [{ title: "RSSニュースを待機しています", source: "Signage", date: "" }];
-      $("newsItems").innerHTML = items.map((item) => `
+      const markup = items.map(renderNewsItem).join("");
+      $("newsItems").innerHTML = `<div class="news-sequence">${markup}</div><div class="news-sequence" aria-hidden="true">${markup}</div>`;
+      const bottomTicker = $("bottomTicker");
+      if (bottomTicker) bottomTicker.textContent = items.map((item) => item.title).join("  /  ");
+      state.newsOffset = 0;
+      $("newsItems").style.transform = "translateY(0)";
+    }
+
+    function renderNewsItem(item) {
+      return `
         <article class="news-item">
           <span class="bullet"></span>
           <div>
@@ -1279,20 +1252,20 @@
             <div class="meta"><span>${escapeHtml(item.source || "")}</span><span>${escapeHtml(formatNewsDate(item.date))}</span></div>
           </div>
         </article>
-      `).join("");
-      const bottomTicker = $("bottomTicker");
-      if (bottomTicker) bottomTicker.textContent = items.map((item) => item.title).join("  /  ");
-      state.newsOffset = 0;
+      `;
     }
 
     function scrollNews() {
       const wrap = document.querySelector(".ticker-wrap");
       const list = $("newsItems");
-      if (!wrap || !list || list.scrollHeight <= wrap.clientHeight) {
+      const firstSequence = list?.querySelector(".news-sequence");
+      if (!wrap || !list || !firstSequence || firstSequence.scrollHeight <= wrap.clientHeight) {
         list.style.transform = "translateY(0)";
         return;
       }
-      state.newsOffset = (state.newsOffset + .38) % (list.scrollHeight + 40);
+      const gap = Number.parseFloat(getComputedStyle(list).getPropertyValue("--news-gap")) || 0;
+      const loopDistance = firstSequence.scrollHeight + gap;
+      state.newsOffset = (state.newsOffset + .38) % loopDistance;
       list.style.transform = `translateY(${-state.newsOffset}px)`;
     }
 
@@ -1345,8 +1318,6 @@
 
     function readSettingsForm() {
       return {
-          title: $("settingTitle").value.trim() || DEFAULTS.title,
-          kicker: $("settingKicker").value.trim() || DEFAULTS.kicker,
           place: $("settingPlace").value.trim() || DEFAULTS.place,
           latitude: Number($("settingLat").value) || DEFAULTS.latitude,
           longitude: Number($("settingLon").value) || DEFAULTS.longitude,
