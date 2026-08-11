@@ -111,7 +111,8 @@
 
     .main {
       display: grid;
-      grid-template-columns: minmax(300px, .82fr) minmax(430px, 1.18fr);
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) clamp(130px, 16vh, 180px);
       gap: clamp(16px, 2vw, 28px);
       min-height: 0;
     }
@@ -191,6 +192,52 @@
       line-height: .88;
     }
 
+    .temp-line {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .weather-alerts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      max-width: 280px;
+    }
+
+    .alert-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, .16);
+      background: rgba(255, 255, 255, .08);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .alert-pill.warn {
+      background: rgba(247, 185, 85, .2);
+      border-color: rgba(247, 185, 85, .48);
+      color: #ffe4a7;
+    }
+
+    .alert-pill.alarm {
+      background: rgba(255, 107, 107, .22);
+      border-color: rgba(255, 107, 107, .55);
+      color: #ffd0d0;
+    }
+
+    .alert-pill.special {
+      background: rgba(255, 255, 255, .92);
+      border-color: rgba(255, 255, 255, .95);
+      color: #111722;
+    }
+
     .condition {
       margin-top: 10px;
       color: var(--muted);
@@ -210,56 +257,65 @@
     }
 
     .metric {
+      display: grid;
+      align-content: space-between;
+      gap: 12px;
       min-width: 0;
-      padding: 14px;
+      min-height: 86px;
+      padding: 13px 14px 14px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: rgba(255, 255, 255, .06);
     }
 
     .astro-grid .metric {
-      padding: 12px 10px;
+      min-height: 82px;
+      padding: 12px 12px 13px;
+      text-align: left;
+      justify-items: stretch;
     }
 
     .metric span {
       display: block;
       color: var(--muted);
-      font-size: 12px;
+      font-size: clamp(15px, 1.15vw, 19px);
       font-weight: 700;
+      line-height: 1.1;
+      justify-self: start;
     }
 
     .metric strong {
       display: block;
-      margin-top: 7px;
       font-variant-numeric: tabular-nums;
-      font-size: clamp(18px, 2.1vw, 28px);
+      font-size: clamp(30px, 3vw, 48px);
       line-height: 1;
     }
 
     .astro-grid .metric strong {
-      font-size: clamp(15px, 1.6vw, 22px);
+      font-size: clamp(24px, 2.2vw, 36px);
       white-space: nowrap;
+      text-align: center;
     }
 
     .moon-phase {
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: auto auto;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      margin-top: 7px;
       min-width: 0;
     }
 
     .moon-phase svg {
-      width: 34px;
-      height: 34px;
+      width: clamp(34px, 3.2vw, 48px);
+      height: clamp(34px, 3.2vw, 48px);
       filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .28));
       flex: 0 0 auto;
     }
 
     .moon-phase strong {
       margin-top: 0;
-      font-size: 13px;
+      font-size: clamp(24px, 2.2vw, 36px);
       line-height: 1.15;
       white-space: normal;
     }
@@ -272,27 +328,30 @@
 
     .day {
       display: grid;
-      gap: 8px;
+      gap: 10px;
       justify-items: center;
-      padding: 12px 8px;
+      align-content: space-between;
+      min-height: 104px;
+      padding: 10px 10px 12px;
       border-radius: 8px;
       background: rgba(255, 255, 255, .05);
       min-width: 0;
     }
 
     .day-name {
+      justify-self: start;
       color: var(--muted);
-      font-size: 12px;
+      font-size: clamp(15px, 1.15vw, 19px);
       font-weight: 800;
     }
 
     .day svg {
-      width: 34px;
-      height: 34px;
+      width: clamp(38px, 3.5vw, 56px);
+      height: clamp(38px, 3.5vw, 56px);
     }
 
     .day-temp {
-      font-size: 13px;
+      font-size: clamp(20px, 1.8vw, 30px);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
@@ -301,7 +360,7 @@
     .news {
       display: grid;
       grid-template-rows: auto 1fr;
-      padding: clamp(18px, 2.4vw, 30px);
+      padding: clamp(14px, 1.5vw, 20px);
       overflow: hidden;
     }
 
@@ -309,22 +368,25 @@
       position: relative;
       min-height: 0;
       overflow: hidden;
-      margin-top: 18px;
+      margin-top: 10px;
     }
 
     .items {
       --news-gap: 12px;
-      display: block;
+      display: flex;
+      align-items: stretch;
       will-change: transform;
     }
 
     .news-sequence {
-      display: grid;
+      display: flex;
       gap: var(--news-gap);
+      align-items: stretch;
+      flex: 0 0 auto;
     }
 
     .news-sequence + .news-sequence {
-      margin-top: var(--news-gap);
+      margin-left: var(--news-gap);
     }
 
     .news-item {
@@ -332,8 +394,10 @@
       grid-template-columns: auto 1fr;
       gap: 14px;
       align-items: start;
-      min-height: 92px;
-      padding: 15px;
+      width: clamp(430px, 42vw, 760px);
+      min-height: 0;
+      height: 100%;
+      padding: 13px 15px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: rgba(255, 255, 255, .055);
@@ -350,11 +414,11 @@
 
     .headline {
       margin: 0;
-      font-size: clamp(17px, 2vw, 27px);
+      font-size: clamp(16px, 1.7vw, 24px);
       line-height: 1.28;
       font-weight: 800;
       display: -webkit-box;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 1;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
@@ -363,7 +427,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 9px;
-      margin-top: 10px;
+      margin-top: 8px;
       color: var(--muted);
       font-size: 13px;
     }
@@ -538,10 +602,33 @@
 
       .main {
         gap: clamp(14px, 1.5vw, 24px);
+        grid-template-rows: minmax(0, 1fr) clamp(118px, 15vh, 150px);
       }
 
       .weather, .news {
         padding: clamp(16px, 1.8vw, 24px);
+      }
+
+      .news {
+        padding: 12px 16px;
+      }
+
+      .ticker-wrap {
+        margin-top: 8px;
+      }
+
+      .news-item {
+        width: clamp(390px, 40vw, 650px);
+        padding: 10px 12px;
+      }
+
+      .headline {
+        font-size: clamp(15px, 1.5vw, 21px);
+      }
+
+      .meta {
+        margin-top: 6px;
+        font-size: 12px;
       }
 
       .weather {
@@ -564,6 +651,16 @@
         font-size: clamp(64px, 7vw, 104px);
       }
 
+      .weather-alerts {
+        max-width: 220px;
+      }
+
+      .alert-pill {
+        min-height: 26px;
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+
       .condition {
         margin-top: 6px;
         font-size: clamp(16px, 1.4vw, 22px);
@@ -574,12 +671,17 @@
       }
 
       .metric {
-        padding: 10px 12px;
+        min-height: 74px;
+        padding: 10px 12px 11px;
+        gap: 9px;
+      }
+
+      .metric span {
+        font-size: clamp(14px, 1.05vw, 17px);
       }
 
       .metric strong {
-        margin-top: 5px;
-        font-size: clamp(18px, 1.7vw, 25px);
+        font-size: clamp(27px, 2.4vw, 40px);
       }
 
       .forecast {
@@ -587,17 +689,22 @@
       }
 
       .day {
-        gap: 5px;
-        padding: 8px 6px;
+        gap: 7px;
+        min-height: 88px;
+        padding: 8px 8px 9px;
       }
 
       .day svg {
-        width: 28px;
-        height: 28px;
+        width: clamp(32px, 3vw, 44px);
+        height: clamp(32px, 3vw, 44px);
+      }
+
+      .day-name {
+        font-size: clamp(13px, 1vw, 16px);
       }
 
       .day-temp {
-        font-size: 12px;
+        font-size: clamp(17px, 1.5vw, 24px);
       }
 
       .astro-grid {
@@ -605,25 +712,25 @@
       }
 
       .astro-grid .metric {
-        padding: 8px 8px;
+        min-height: 74px;
+        padding: 9px 9px 10px;
       }
 
       .astro-grid .metric strong {
-        font-size: clamp(14px, 1.25vw, 18px);
+        font-size: clamp(21px, 1.8vw, 30px);
       }
 
       .moon-phase {
         gap: 6px;
-        margin-top: 5px;
       }
 
       .moon-phase svg {
-        width: 28px;
-        height: 28px;
+        width: clamp(30px, 2.5vw, 40px);
+        height: clamp(30px, 2.5vw, 40px);
       }
 
       .moon-phase strong {
-        font-size: 12px;
+        font-size: clamp(21px, 1.8vw, 30px);
       }
 
       .footer {
@@ -664,6 +771,32 @@
         padding: 14px;
       }
 
+      .main {
+        grid-template-rows: minmax(0, 1fr) 112px;
+      }
+
+      .news {
+        padding: 10px 12px;
+      }
+
+      .ticker-wrap {
+        margin-top: 6px;
+      }
+
+      .news-item {
+        width: clamp(340px, 42vw, 560px);
+        padding: 8px 10px;
+      }
+
+      .headline {
+        font-size: clamp(14px, 1.55vw, 19px);
+      }
+
+      .meta {
+        margin-top: 4px;
+        font-size: 11px;
+      }
+
       .section-label {
         font-size: 12px;
       }
@@ -685,58 +818,79 @@
         font-size: clamp(52px, 8vw, 86px);
       }
 
+      .temp-line {
+        gap: 10px;
+      }
+
+      .weather-alerts {
+        max-width: 180px;
+        gap: 5px;
+      }
+
+      .alert-pill {
+        min-height: 23px;
+        padding: 3px 7px;
+        font-size: 10px;
+      }
+
       .condition {
         margin-top: 4px;
         font-size: 16px;
       }
 
       .metric {
-        padding: 8px 9px;
+        min-height: 62px;
+        padding: 7px 8px 8px;
+        gap: 6px;
       }
 
       .metric span {
-        font-size: 11px;
+        font-size: 12px;
       }
 
       .metric strong {
-        margin-top: 4px;
-        font-size: clamp(16px, 2vw, 22px);
+        font-size: clamp(21px, 2.7vw, 32px);
       }
 
       .day {
-        gap: 3px;
-        padding: 6px 5px;
+        gap: 4px;
+        min-height: 72px;
+        padding: 6px 6px 7px;
       }
 
-      .day-name, .day-temp {
-        font-size: 11px;
+      .day-name {
+        font-size: 12px;
+      }
+
+      .day-temp {
+        font-size: clamp(15px, 2vw, 21px);
       }
 
       .day svg {
-        width: 23px;
-        height: 23px;
+        width: 28px;
+        height: 28px;
       }
 
       .astro-grid .metric {
-        padding: 6px 6px;
+        min-height: 62px;
+        padding: 6px 6px 7px;
       }
 
       .astro-grid .metric strong {
-        font-size: 13px;
+        font-size: clamp(18px, 2.2vw, 26px);
       }
 
       .moon-phase {
         gap: 5px;
-        margin-top: 3px;
       }
 
       .moon-phase svg {
-        width: 23px;
-        height: 23px;
+        width: 26px;
+        height: 26px;
       }
 
       .moon-phase strong {
-        font-size: 11px;
+        font-size: clamp(18px, 2.2vw, 26px);
       }
 
       .footer {
@@ -784,7 +938,12 @@
           <div class="weather-visual">
             <div class="weather-icon" id="weatherIcon" aria-hidden="true"></div>
             <div>
-              <div class="temp" id="temp">--°</div>
+              <div class="temp-line">
+                <div class="temp" id="temp">--°</div>
+                <div class="weather-alerts" id="weatherAlerts" aria-live="polite">
+                  <span class="alert-pill">警報確認中</span>
+                </div>
+              </div>
               <div class="condition" id="condition">--</div>
             </div>
           </div>
@@ -800,7 +959,7 @@
           <div class="metric"><span>日の入</span><strong id="sunset">--:--</strong></div>
           <div class="metric"><span>月の出</span><strong id="moonrise">--:--</strong></div>
           <div class="metric"><span>月の入</span><strong id="moonset">--:--</strong></div>
-          <div class="metric"><span>月相</span><div class="moon-phase" id="moonPhase" title="月齢 --"><strong>--</strong></div></div>
+          <div class="metric"><span>月の可視率</span><div class="moon-phase" id="moonPhase" title="月齢 --"><strong>--%</strong></div></div>
         </div>
       </section>
 
@@ -841,6 +1000,11 @@
         <label>経度<input id="settingLon" inputmode="decimal"></label>
       </div>
       <div class="row">
+        <label>警報 府県コード<input id="settingWarningOffice" inputmode="numeric"></label>
+        <label>警報 区域コード<input id="settingWarningArea" inputmode="numeric"></label>
+      </div>
+      <label>警報 区域名<input id="settingWarningName" autocomplete="off"></label>
+      <div class="row">
         <label>天気更新 分<input id="settingWeatherMinutes" inputmode="numeric"></label>
         <label>RSS更新 分<input id="settingNewsMinutes" inputmode="numeric"></label>
       </div>
@@ -868,6 +1032,9 @@
       place: "Tokyo",
       latitude: 35.6812,
       longitude: 139.7671,
+      warningOfficeCode: "130000",
+      warningAreaCode: "130010",
+      warningAreaName: "東京地方",
       weatherMinutes: 10,
       newsMinutes: 12,
       proxy: "auto",
@@ -888,6 +1055,14 @@
       80: ["にわか雨", "rain"], 81: ["にわか雨", "rain"], 82: ["強いにわか雨", "rain"],
       85: ["にわか雪", "snow"], 86: ["強いにわか雪", "snow"], 95: ["雷雨", "storm"],
       96: ["ひょうを伴う雷雨", "storm"], 99: ["強いひょうを伴う雷雨", "storm"]
+    };
+
+    const JMA_WARNING_NAMES = {
+      "02": "暴風雪警報", "03": "大雨警報", "04": "洪水警報", "05": "暴風警報", "06": "大雪警報", "07": "波浪警報", "08": "高潮警報",
+      "10": "大雨注意報", "12": "大雪注意報", "13": "風雪注意報", "14": "雷注意報", "15": "強風注意報", "16": "波浪注意報",
+      "17": "融雪注意報", "18": "洪水注意報", "19": "高潮注意報", "20": "濃霧注意報", "21": "乾燥注意報", "22": "なだれ注意報",
+      "23": "低温注意報", "24": "霜注意報", "25": "着氷注意報", "26": "着雪注意報",
+      "32": "暴風雪特別警報", "33": "大雨特別警報", "35": "暴風特別警報", "36": "大雪特別警報", "37": "波浪特別警報", "38": "高潮特別警報"
     };
 
     const $ = (id) => document.getElementById(id);
@@ -933,6 +1108,9 @@
       $("settingPlace").value = state.settings.place;
       $("settingLat").value = state.settings.latitude;
       $("settingLon").value = state.settings.longitude;
+      $("settingWarningOffice").value = state.settings.warningOfficeCode || DEFAULTS.warningOfficeCode;
+      $("settingWarningArea").value = state.settings.warningAreaCode || DEFAULTS.warningAreaCode;
+      $("settingWarningName").value = state.settings.warningAreaName || DEFAULTS.warningAreaName;
       $("settingWeatherMinutes").value = state.settings.weatherMinutes;
       $("settingNewsMinutes").value = state.settings.newsMinutes;
       $("settingFeeds").value = state.settings.feeds.join("\n");
@@ -961,6 +1139,7 @@
           current: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
           daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
           timezone: "auto",
+          wind_speed_unit: "ms",
           forecast_days: "5"
         }).toString();
         const data = await fetch(url).then((response) => {
@@ -972,9 +1151,10 @@
         $("temp").textContent = `${Math.round(current.temperature_2m)}°`;
         $("condition").textContent = label;
         $("humidity").textContent = `${Math.round(current.relative_humidity_2m)}%`;
-        $("wind").textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+        $("wind").textContent = `${Number(current.wind_speed_10m).toFixed(1)} m/s`;
         $("rain").textContent = `${data.daily.precipitation_probability_max[0] ?? "--"}%`;
         $("weatherIcon").innerHTML = weatherSvg(icon);
+        updateWeatherAlerts();
         const astro = getAstronomy(new Date(), Number(latitude), Number(longitude));
         $("sunrise").textContent = formatClock(data.daily.sunrise?.[0]);
         $("sunset").textContent = formatClock(data.daily.sunset?.[0]);
@@ -992,6 +1172,80 @@
       } catch (error) {
         $("weatherStatus").innerHTML = `<span class="error">天気を取得できません</span>`;
       }
+    }
+
+    async function updateWeatherAlerts() {
+      const officeCode = String(state.settings.warningOfficeCode || DEFAULTS.warningOfficeCode).trim();
+      const areaCode = String(state.settings.warningAreaCode || DEFAULTS.warningAreaCode).trim();
+      const target = $("weatherAlerts");
+      if (!officeCode || !areaCode || !target) return;
+
+      target.innerHTML = `<span class="alert-pill">警報確認中</span>`;
+      try {
+        const response = await fetch(`https://www.jma.go.jp/bosai/warning/data/warning/${officeCode}.json`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const area = data.areaTypes
+          ?.flatMap((areaType) => areaType.areas || [])
+          .find((candidate) => candidate.code === areaCode);
+        const activeWarnings = (area?.warnings || [])
+          .filter((warning) => warning.code && warning.status !== "解除")
+          .map(toWarningDisplay);
+
+        const officeWarnings = collectOfficeWarnings(data);
+        renderWeatherAlerts(activeWarnings, data.reportDatetime, officeWarnings);
+      } catch {
+        target.innerHTML = `<span class="alert-pill">警報取得不可</span>`;
+      }
+    }
+
+    function collectOfficeWarnings(data) {
+      const warningsByCode = new Map();
+      const summaryAreas = data.areaTypes?.[0]?.areas || [];
+      summaryAreas.forEach((area) => {
+        (area.warnings || [])
+          .filter((warning) => warning.code && warning.status !== "解除")
+          .forEach((warning) => {
+            if (!warningsByCode.has(warning.code)) warningsByCode.set(warning.code, toWarningDisplay(warning));
+          });
+      });
+      return [...warningsByCode.values()];
+    }
+
+    function toWarningDisplay(warning) {
+      return {
+        code: warning.code,
+        name: JMA_WARNING_NAMES[warning.code] || `警報・注意報 ${warning.code}`,
+        level: warningLevel(warning.code)
+      };
+    }
+
+    function renderWeatherAlerts(warnings, reportDatetime, officeWarnings = []) {
+      const target = $("weatherAlerts");
+      if (!target) return;
+      const areaName = state.settings.warningAreaName || DEFAULTS.warningAreaName;
+      const reportTime = reportDatetime ? formatClock(reportDatetime) : "";
+      target.title = reportTime ? `${areaName} ${reportTime}発表` : areaName;
+      if (!warnings.length) {
+        if (officeWarnings.length) {
+          target.title = reportTime ? `${areaName}は発表なし / 府県内 ${reportTime}発表` : `${areaName}は発表なし / 府県内`;
+          target.innerHTML = officeWarnings.slice(0, 3).map((warning) =>
+            `<span class="alert-pill ${warning.level}">管内あり ${escapeHtml(warning.name)}</span>`
+          ).join("");
+          return;
+        }
+        target.innerHTML = `<span class="alert-pill">発表なし</span>`;
+        return;
+      }
+      target.innerHTML = warnings.slice(0, 4).map((warning) =>
+        `<span class="alert-pill ${warning.level}">${escapeHtml(warning.name)}</span>`
+      ).join("");
+    }
+
+    function warningLevel(code) {
+      if (["32", "33", "35", "36", "37", "38"].includes(code)) return "special";
+      if (["02", "03", "04", "05", "06", "07", "08"].includes(code)) return "alarm";
+      return "warn";
     }
 
     function formatClock(value) {
@@ -1018,23 +1272,17 @@
 
     function renderMoonPhase(age) {
       const target = $("moonPhase");
-      const label = moonPhaseLabel(age);
+      const visiblePercent = moonVisiblePercent(age);
+      const label = `${visiblePercent}%`;
       const ageText = `月齢 ${age.toFixed(1)}日`;
-      target.title = `${label} / ${ageText}`;
-      target.setAttribute("aria-label", `${label}、${ageText}`);
+      target.title = `月の可視率 ${label} / ${ageText}`;
+      target.setAttribute("aria-label", `月の可視率 ${label}、${ageText}`);
       target.innerHTML = `${moonPhaseSvg(age)}<strong>${label}</strong>`;
     }
 
-    function moonPhaseLabel(age) {
+    function moonVisiblePercent(age) {
       const phase = age / 29.530588853;
-      if (phase < .03 || phase >= .97) return "新月";
-      if (phase < .22) return "三日月";
-      if (phase < .28) return "上弦";
-      if (phase < .47) return "十三夜";
-      if (phase < .53) return "満月";
-      if (phase < .72) return "寝待月";
-      if (phase < .78) return "下弦";
-      return "有明月";
+      return Math.round((1 - Math.cos(2 * Math.PI * phase)) * 50);
     }
 
     function moonPhaseSvg(age) {
@@ -1044,40 +1292,42 @@
       const light = "#f4f7fb";
       const dark = "#111722";
       const rim = "#9ca8b8";
-      const illuminatedPath = moonIlluminatedPath(phase, center, radius);
+      const shadowPath = moonShadowPath(phase, center, radius);
       return `
         <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
           <defs>
             <clipPath id="moon-disc-clip"><circle cx="${center}" cy="${center}" r="${radius}"/></clipPath>
           </defs>
-          <circle cx="${center}" cy="${center}" r="${radius}" fill="${dark}"/>
-          <path d="${illuminatedPath}" fill="${light}" clip-path="url(#moon-disc-clip)"/>
+          <circle cx="${center}" cy="${center}" r="${radius}" fill="${light}"/>
+          <path d="${shadowPath}" fill="${dark}" clip-path="url(#moon-disc-clip)"/>
           <circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="${rim}" stroke-width="2" opacity=".74"/>
         </svg>
       `;
     }
 
-    function moonIlluminatedPath(phase, center, radius) {
+    function moonShadowPath(phase, center, radius) {
       const normalized = ((phase % 1) + 1) % 1;
       const epsilon = .015;
       const top = center - radius;
       const bottom = center + radius;
-      if (normalized < epsilon || normalized > 1 - epsilon) return "";
-      if (Math.abs(normalized - .5) < epsilon) {
+      if (normalized < epsilon || normalized > 1 - epsilon) {
         return `M ${center} ${top} A ${radius} ${radius} 0 1 1 ${center} ${bottom} A ${radius} ${radius} 0 1 1 ${center} ${top} Z`;
+      }
+      if (Math.abs(normalized - .5) < epsilon) {
+        return "";
       }
 
       const curveRadius = Math.max(.01, radius * Math.abs(Math.cos(2 * Math.PI * normalized)));
       if (normalized < .25) {
-        return `M ${center} ${top} A ${radius} ${radius} 0 0 1 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 0 ${center} ${top} Z`;
-      }
-      if (normalized < .5) {
-        return `M ${center} ${top} A ${radius} ${radius} 0 0 1 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 1 ${center} ${top} Z`;
-      }
-      if (normalized < .75) {
         return `M ${center} ${top} A ${radius} ${radius} 0 0 0 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 1 ${center} ${top} Z`;
       }
-      return `M ${center} ${top} A ${radius} ${radius} 0 0 0 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 0 ${center} ${top} Z`;
+      if (normalized < .5) {
+        return `M ${center} ${top} A ${radius} ${radius} 0 0 0 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 0 ${center} ${top} Z`;
+      }
+      if (normalized < .75) {
+        return `M ${center} ${top} A ${radius} ${radius} 0 0 1 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 0 ${center} ${top} Z`;
+      }
+      return `M ${center} ${top} A ${radius} ${radius} 0 0 1 ${center} ${bottom} A ${curveRadius} ${radius} 0 0 1 ${center} ${top} Z`;
     }
 
     function getMoonTimes(date, latitude, longitude) {
@@ -1240,7 +1490,7 @@
       const bottomTicker = $("bottomTicker");
       if (bottomTicker) bottomTicker.textContent = items.map((item) => item.title).join("  /  ");
       state.newsOffset = 0;
-      $("newsItems").style.transform = "translateY(0)";
+      $("newsItems").style.transform = "translateX(0)";
     }
 
     function renderNewsItem(item) {
@@ -1259,14 +1509,14 @@
       const wrap = document.querySelector(".ticker-wrap");
       const list = $("newsItems");
       const firstSequence = list?.querySelector(".news-sequence");
-      if (!wrap || !list || !firstSequence || firstSequence.scrollHeight <= wrap.clientHeight) {
-        list.style.transform = "translateY(0)";
+      if (!wrap || !list || !firstSequence || firstSequence.scrollWidth <= wrap.clientWidth) {
+        list.style.transform = "translateX(0)";
         return;
       }
       const gap = Number.parseFloat(getComputedStyle(list).getPropertyValue("--news-gap")) || 0;
-      const loopDistance = firstSequence.scrollHeight + gap;
-      state.newsOffset = (state.newsOffset + .38) % loopDistance;
-      list.style.transform = `translateY(${-state.newsOffset}px)`;
+      const loopDistance = firstSequence.scrollWidth + gap;
+      state.newsOffset = (state.newsOffset + .55) % loopDistance;
+      list.style.transform = `translateX(${-state.newsOffset}px)`;
     }
 
     function escapeHtml(value) {
@@ -1321,6 +1571,9 @@
           place: $("settingPlace").value.trim() || DEFAULTS.place,
           latitude: Number($("settingLat").value) || DEFAULTS.latitude,
           longitude: Number($("settingLon").value) || DEFAULTS.longitude,
+          warningOfficeCode: $("settingWarningOffice").value.trim() || DEFAULTS.warningOfficeCode,
+          warningAreaCode: $("settingWarningArea").value.trim() || DEFAULTS.warningAreaCode,
+          warningAreaName: $("settingWarningName").value.trim() || DEFAULTS.warningAreaName,
           weatherMinutes: Math.max(1, Number($("settingWeatherMinutes").value) || DEFAULTS.weatherMinutes),
           newsMinutes: Math.max(1, Number($("settingNewsMinutes").value) || DEFAULTS.newsMinutes),
           proxy: $("settingProxy").value,
