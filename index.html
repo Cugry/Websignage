@@ -202,22 +202,23 @@
     .weather-alerts {
       display: flex;
       flex-wrap: wrap;
-      gap: 7px;
-      max-width: 280px;
+      gap: 10px;
+      max-width: 520px;
     }
 
     .alert-pill {
       display: inline-flex;
       align-items: center;
-      min-height: 28px;
-      padding: 5px 9px;
+      min-height: 48px;
+      padding: 8px 14px;
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, .16);
       background: rgba(255, 255, 255, .08);
       color: var(--muted);
-      font-size: 12px;
+      font-size: clamp(24px, 2vw, 34px);
       font-weight: 800;
       white-space: nowrap;
+      line-height: 1;
     }
 
     .alert-pill.warn {
@@ -329,7 +330,6 @@
     .day {
       display: grid;
       gap: 10px;
-      justify-items: center;
       align-content: space-between;
       min-height: 104px;
       padding: 10px 10px 12px;
@@ -345,7 +345,16 @@
       font-weight: 800;
     }
 
-    .day svg {
+    .day-body {
+      display: grid;
+      grid-template-columns: auto auto;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .day-body svg {
       width: clamp(38px, 3.5vw, 56px);
       height: clamp(38px, 3.5vw, 56px);
     }
@@ -652,13 +661,14 @@
       }
 
       .weather-alerts {
-        max-width: 220px;
+        max-width: 430px;
+        gap: 8px;
       }
 
       .alert-pill {
-        min-height: 26px;
-        padding: 4px 8px;
-        font-size: 11px;
+        min-height: 40px;
+        padding: 7px 12px;
+        font-size: clamp(20px, 1.65vw, 28px);
       }
 
       .condition {
@@ -694,7 +704,7 @@
         padding: 8px 8px 9px;
       }
 
-      .day svg {
+      .day-body svg {
         width: clamp(32px, 3vw, 44px);
         height: clamp(32px, 3vw, 44px);
       }
@@ -823,14 +833,14 @@
       }
 
       .weather-alerts {
-        max-width: 180px;
-        gap: 5px;
+        max-width: 340px;
+        gap: 7px;
       }
 
       .alert-pill {
-        min-height: 23px;
-        padding: 3px 7px;
-        font-size: 10px;
+        min-height: 34px;
+        padding: 6px 10px;
+        font-size: clamp(17px, 2vw, 24px);
       }
 
       .condition {
@@ -866,7 +876,7 @@
         font-size: clamp(15px, 2vw, 21px);
       }
 
-      .day svg {
+      .day-body svg {
         width: 28px;
         height: 28px;
       }
@@ -1166,7 +1176,7 @@
           const weekday = new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(new Date(`${date}T00:00:00`));
           const high = Math.round(data.daily.temperature_2m_max[index]);
           const low = Math.round(data.daily.temperature_2m_min[index]);
-          return `<div class="day" title="${dayLabel}"><div class="day-name">${weekday}</div>${weatherSvg(dayIcon)}<div class="day-temp">${low}° / ${high}°</div></div>`;
+          return `<div class="day" title="${dayLabel}"><div class="day-name">${weekday}</div><div class="day-body">${weatherSvg(dayIcon)}<div class="day-temp">${low}° / ${high}°</div></div></div>`;
         }).join("");
         $("weatherStatus").textContent = `更新 ${new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit" }).format(new Date())}`;
       } catch (error) {
