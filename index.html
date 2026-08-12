@@ -1016,6 +1016,9 @@
       <label>警報 区域名<input id="settingWarningName" autocomplete="off"></label>
       <div class="row">
         <label>天気更新 分<input id="settingWeatherMinutes" inputmode="numeric"></label>
+        <label>警報更新 分<input id="settingAlertMinutes" inputmode="numeric"></label>
+      </div>
+      <div class="row">
         <label>RSS更新 分<input id="settingNewsMinutes" inputmode="numeric"></label>
       </div>
       <label>RSS URL（1行に1件）<textarea id="settingFeeds" spellcheck="false"></textarea></label>
@@ -1046,6 +1049,7 @@
       warningAreaCode: "130010",
       warningAreaName: "東京地方",
       weatherMinutes: 10,
+      alertMinutes: 5,
       newsMinutes: 12,
       proxy: "auto",
       feeds: [
@@ -1122,6 +1126,7 @@
       $("settingWarningArea").value = state.settings.warningAreaCode || DEFAULTS.warningAreaCode;
       $("settingWarningName").value = state.settings.warningAreaName || DEFAULTS.warningAreaName;
       $("settingWeatherMinutes").value = state.settings.weatherMinutes;
+      $("settingAlertMinutes").value = state.settings.alertMinutes || DEFAULTS.alertMinutes;
       $("settingNewsMinutes").value = state.settings.newsMinutes;
       $("settingFeeds").value = state.settings.feeds.join("\n");
       $("settingProxy").value = ["auto", "allorigins", "rss2json", "jina", "direct"].includes(state.settings.proxy)
@@ -1164,7 +1169,6 @@
         $("wind").textContent = `${Number(current.wind_speed_10m).toFixed(1)} m/s`;
         $("rain").textContent = `${data.daily.precipitation_probability_max[0] ?? "--"}%`;
         $("weatherIcon").innerHTML = weatherSvg(icon);
-        updateWeatherAlerts();
         const astro = getAstronomy(new Date(), Number(latitude), Number(longitude));
         $("sunrise").textContent = formatClock(data.daily.sunrise?.[0]);
         $("sunset").textContent = formatClock(data.daily.sunset?.[0]);
@@ -1540,6 +1544,7 @@
       state.timers = [
         setInterval(updateClock, 1000),
         setInterval(updateWeather, Math.max(1, Number(state.settings.weatherMinutes)) * 60000),
+        setInterval(updateWeatherAlerts, Math.max(1, Number(state.settings.alertMinutes || DEFAULTS.alertMinutes)) * 60000),
         setInterval(updateNews, Math.max(1, Number(state.settings.newsMinutes)) * 60000),
         setInterval(scrollNews, 40)
       ];
@@ -1549,6 +1554,7 @@
       applyChrome();
       updateClock();
       updateWeather();
+      updateWeatherAlerts();
       updateNews();
       resetTimers();
       $("openSettings").addEventListener("click", () => $("settings").classList.add("open"));
@@ -1557,6 +1563,7 @@
         saveSettings({ ...DEFAULTS });
         applyChrome();
         updateWeather();
+        updateWeatherAlerts();
         updateNews();
         resetTimers();
       });
@@ -1565,6 +1572,7 @@
         saveSettings(readSettingsForm());
         applyChrome();
         updateWeather();
+        updateWeatherAlerts();
         updateNews();
         resetTimers();
         $("settings").classList.remove("open");
@@ -1585,6 +1593,7 @@
           warningAreaCode: $("settingWarningArea").value.trim() || DEFAULTS.warningAreaCode,
           warningAreaName: $("settingWarningName").value.trim() || DEFAULTS.warningAreaName,
           weatherMinutes: Math.max(1, Number($("settingWeatherMinutes").value) || DEFAULTS.weatherMinutes),
+          alertMinutes: Math.max(1, Number($("settingAlertMinutes").value) || DEFAULTS.alertMinutes),
           newsMinutes: Math.max(1, Number($("settingNewsMinutes").value) || DEFAULTS.newsMinutes),
           proxy: $("settingProxy").value,
           feeds: $("settingFeeds").value.split("\n").map((line) => line.trim()).filter(Boolean)
