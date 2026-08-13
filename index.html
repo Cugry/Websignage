@@ -1196,7 +1196,7 @@
 
       target.innerHTML = `<span class="alert-pill">警報確認中</span>`;
       try {
-        const response = await fetch(`https://www.jma.go.jp/bosai/warning/data/warning/${officeCode}.json`, { cache: "no-store" });
+        const response = await fetch(`https://www.jma.go.jp/bosai/warning/data/warning/${officeCode}.json?ts=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         const area = data.areaTypes
@@ -1206,24 +1206,10 @@
           .filter((warning) => warning.code && warning.status !== "解除")
           .map(toWarningDisplay);
 
-        const officeWarnings = collectOfficeWarnings(data);
-        renderWeatherAlerts(activeWarnings, data.reportDatetime, officeWarnings);
+        renderWeatherAlerts(activeWarnings, data.reportDatetime);
       } catch {
         target.innerHTML = `<span class="alert-pill">警報取得不可</span>`;
       }
-    }
-
-    function collectOfficeWarnings(data) {
-      const warningsByCode = new Map();
-      const summaryAreas = data.areaTypes?.[0]?.areas || [];
-      summaryAreas.forEach((area) => {
-        (area.warnings || [])
-          .filter((warning) => warning.code && warning.status !== "解除")
-          .forEach((warning) => {
-            if (!warningsByCode.has(warning.code)) warningsByCode.set(warning.code, toWarningDisplay(warning));
-          });
-      });
-      return [...warningsByCode.values()];
     }
 
     function toWarningDisplay(warning) {
@@ -1234,20 +1220,13 @@
       };
     }
 
-    function renderWeatherAlerts(warnings, reportDatetime, officeWarnings = []) {
+    function renderWeatherAlerts(warnings, reportDatetime) {
       const target = $("weatherAlerts");
       if (!target) return;
       const areaName = state.settings.warningAreaName || DEFAULTS.warningAreaName;
       const reportTime = reportDatetime ? formatClock(reportDatetime) : "";
       target.title = reportTime ? `${areaName} ${reportTime}発表` : areaName;
       if (!warnings.length) {
-        if (officeWarnings.length) {
-          target.title = reportTime ? `${areaName}は発表なし / 府県内 ${reportTime}発表` : `${areaName}は発表なし / 府県内`;
-          target.innerHTML = officeWarnings.slice(0, 3).map((warning) =>
-            `<span class="alert-pill ${warning.level}">管内あり ${escapeHtml(warning.name)}</span>`
-          ).join("");
-          return;
-        }
         target.innerHTML = `<span class="alert-pill">発表なし</span>`;
         return;
       }
