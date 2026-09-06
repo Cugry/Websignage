@@ -466,6 +466,22 @@
       background: rgba(255, 255, 255, .13);
     }
 
+    body.remote-navigation button:focus,
+    body.remote-navigation input:focus,
+    body.remote-navigation textarea:focus,
+    body.remote-navigation select:focus {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+      box-shadow: 0 0 0 6px rgba(79, 209, 197, .2);
+    }
+
+    body.remote-navigation input:focus,
+    body.remote-navigation textarea:focus,
+    body.remote-navigation select:focus {
+      background: rgba(255, 255, 255, .14);
+      border-color: var(--accent);
+    }
+
     .drawer {
       position: fixed;
       inset: 0 0 0 auto;
@@ -1814,6 +1830,142 @@
       ];
     }
 
+    const REMOTE_KEY_CODES = {
+      4: "Back",
+      13: "Enter",
+      19: "ArrowUp",
+      20: "ArrowDown",
+      21: "ArrowLeft",
+      22: "ArrowRight",
+      23: "Enter",
+      37: "ArrowLeft",
+      38: "ArrowUp",
+      39: "ArrowRight",
+      40: "ArrowDown"
+    };
+
+    function remoteKey(event) {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Escape", "BrowserBack", "GoBack"].includes(event.key)) {
+        return event.key;
+      }
+      return REMOTE_KEY_CODES[event.keyCode || event.which] || "";
+    }
+
+    function focusRemoteElement(element) {
+      if (!element) return;
+      try {
+        element.focus({ preventScroll: true });
+      } catch {
+        element.focus();
+      }
+      try {
+        element.scrollIntoView({ block: "nearest", inline: "nearest" });
+      } catch {
+        element.scrollIntoView(false);
+      }
+    }
+
+    function remoteFocusableElements() {
+      if (!$("settings").classList.contains("open")) return [$("openSettings")];
+      const scope = $("settings");
+      return Array.from(scope.querySelectorAll("button, input, textarea, select, [tabindex]"))
+        .filter((element) => {
+          if (element.disabled || element.tabIndex < 0) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+        });
+    }
+
+    function moveRemoteFocus(direction) {
+      const elements = remoteFocusableElements();
+      if (!elements.length) return;
+      const current = elements.includes(document.activeElement) ? document.activeElement : null;
+      if (!current) {
+        focusRemoteElement($("settings").classList.contains("open") ? $("settingMunicipality") : $("openSettings"));
+        return;
+      }
+
+      const currentRect = current.getBoundingClientRect();
+      const currentCenter = {
+        x: currentRect.left + currentRect.width / 2,
+        y: currentRect.top + currentRect.height / 2
+      };
+      const vertical = direction === "ArrowUp" || direction === "ArrowDown";
+      const sign = direction === "ArrowDown" || direction === "ArrowRight" ? 1 : -1;
+      const candidates = elements
+        .filter((element) => element !== current)
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+          const primary = ((vertical ? center.y : center.x) - (vertical ? currentCenter.y : currentCenter.x)) * sign;
+          const secondary = Math.abs((vertical ? center.x : center.y) - (vertical ? currentCenter.x : currentCenter.y));
+          const overlaps = vertical
+            ? rect.right >= currentRect.left && rect.left <= currentRect.right
+            : rect.bottom >= currentRect.top && rect.top <= currentRect.bottom;
+          return { element, primary, score: primary * 2 + secondary + (overlaps ? 0 : 10000) };
+        })
+        .filter((candidate) => candidate.primary > 4)
+        .sort((a, b) => a.score - b.score);
+
+      if (candidates[0]) {
+        focusRemoteElement(candidates[0].element);
+        return;
+      }
+      const index = elements.indexOf(current);
+      const step = sign > 0 ? 1 : -1;
+      focusRemoteElement(elements[(index + step + elements.length) % elements.length]);
+    }
+
+    function openSettingsDrawer() {
+      $("settings").classList.add("open");
+      setTimeout(() => focusRemoteElement($("settingMunicipality")), 240);
+    }
+
+    function closeSettingsDrawer() {
+      $("settings").classList.remove("open");
+      setTimeout(() => focusRemoteElement($("openSettings")), 240);
+    }
+
+    function handleRemoteNavigation(event) {
+      const key = remoteKey(event);
+      if (!key) return;
+      document.body.classList.add("remote-navigation");
+      const drawerOpen = $("settings").classList.contains("open");
+
+      if (["Escape", "BrowserBack", "GoBack", "Back"].includes(key) && drawerOpen) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSettingsDrawer();
+        return;
+      }
+
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) {
+        if (document.activeElement instanceof HTMLSelectElement && document.activeElement.dataset.remoteOpen === "true") return;
+        event.preventDefault();
+        event.stopPropagation();
+        moveRemoteFocus(key);
+        return;
+      }
+
+      if (key === "Enter" && !remoteFocusableElements().includes(document.activeElement)) {
+        event.preventDefault();
+        event.stopPropagation();
+        focusRemoteElement(drawerOpen ? $("settingMunicipality") : $("openSettings"));
+        if (!drawerOpen) openSettingsDrawer();
+        return;
+      }
+
+      if (key === "Enter" && document.activeElement instanceof HTMLSelectElement) {
+        document.activeElement.dataset.remoteOpen = "true";
+      }
+
+      if (key === "Enter" && (event.keyCode === 23 || event.which === 23) && document.activeElement instanceof HTMLButtonElement) {
+        event.preventDefault();
+        document.activeElement.click();
+      }
+    }
+
     function boot() {
       applyChrome();
       updateClock();
@@ -1821,8 +1973,9 @@
       updateWeatherAlerts();
       updateNews();
       resetTimers();
-      $("openSettings").addEventListener("click", () => $("settings").classList.add("open"));
-      $("closeSettings").addEventListener("click", () => $("settings").classList.remove("open"));
+      document.addEventListener("keydown", handleRemoteNavigation, true);
+      $("openSettings").addEventListener("click", openSettingsDrawer);
+      $("closeSettings").addEventListener("click", closeSettingsDrawer);
       $("settingMunicipality").addEventListener("input", (event) => {
         event.currentTarget.dataset.resolved = "";
         setMunicipalityStatus("");
@@ -1860,12 +2013,16 @@
         updateWeatherAlerts();
         updateNews();
         resetTimers();
-        $("settings").classList.remove("open");
+        closeSettingsDrawer();
       });
       $("settingProxy").addEventListener("change", () => {
+        $("settingProxy").dataset.remoteOpen = "";
         saveSettings(readSettingsForm());
         updateNews();
         resetTimers();
+      });
+      $("settingProxy").addEventListener("blur", () => {
+        $("settingProxy").dataset.remoteOpen = "";
       });
     }
 
