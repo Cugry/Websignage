@@ -532,6 +532,44 @@
       gap: 10px;
     }
 
+    .location-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .location-search {
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .09);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .location-search:disabled {
+      opacity: .55;
+    }
+
+    .form-message {
+      min-height: 18px;
+      margin-top: -7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .form-message.success {
+      color: var(--accent);
+    }
+
+    .form-message.error {
+      color: var(--danger);
+    }
+
     .action-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1004,7 +1042,12 @@
       </button>
     </div>
     <form class="form" id="settingsForm">
-      <label>場所名<input id="settingPlace" autocomplete="off"></label>
+      <div class="location-row">
+        <label>天気予報 都道府県・市区町村<input id="settingMunicipality" autocomplete="address-level2" placeholder="例：東京都八王子市"></label>
+        <button class="location-search" type="button" id="resolveMunicipality">検索</button>
+      </div>
+      <div class="form-message" id="municipalityStatus" aria-live="polite"></div>
+      <label>表示名<input id="settingPlace" autocomplete="off"></label>
       <div class="row">
         <label>緯度<input id="settingLat" inputmode="decimal"></label>
         <label>経度<input id="settingLon" inputmode="decimal"></label>
@@ -1043,11 +1086,13 @@
       title: "サイネージボード",
       kicker: "Live Information",
       place: "Tokyo",
+      municipality: "",
       latitude: 35.6812,
       longitude: 139.7671,
       warningOfficeCode: "130000",
       warningAreaCode: "130010",
       warningAreaName: "東京地方",
+      warningMunicipality: "",
       weatherMinutes: 10,
       alertMinutes: 5,
       newsMinutes: 12,
@@ -1076,7 +1121,14 @@
       "10": "大雨注意報", "12": "大雪注意報", "13": "風雪注意報", "14": "雷注意報", "15": "強風注意報", "16": "波浪注意報",
       "17": "融雪注意報", "18": "洪水注意報", "19": "高潮注意報", "20": "濃霧注意報", "21": "乾燥注意報", "22": "なだれ注意報",
       "23": "低温注意報", "24": "霜注意報", "25": "着氷注意報", "26": "着雪注意報",
+      "29": "土砂災害注意報", "39": "土砂災害警報", "49": "土砂災害危険警報", "59": "土砂災害特別警報",
       "32": "暴風雪特別警報", "33": "大雨特別警報", "35": "暴風特別警報", "36": "大雪特別警報", "37": "波浪特別警報", "38": "高潮特別警報"
+    };
+
+    const JMA_LEVEL_HAZARDS = {
+      VPWW55: "大雨",
+      VPWW56: "土砂災害",
+      VPWW57: "高潮"
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1084,6 +1136,7 @@
       settings: loadSettings(),
       news: [],
       newsOffset: 0,
+      jmaAreasPromise: null,
       timers: []
     };
 
@@ -1119,11 +1172,15 @@
 
     function applyChrome() {
       $("weatherPlace").textContent = state.settings.place;
+      $("settingMunicipality").value = state.settings.municipality || "";
+      $("settingMunicipality").dataset.resolved = normalizeLocationName(state.settings.municipality || "");
+      setMunicipalityStatus("");
       $("settingPlace").value = state.settings.place;
       $("settingLat").value = state.settings.latitude;
       $("settingLon").value = state.settings.longitude;
       $("settingWarningOffice").value = state.settings.warningOfficeCode || DEFAULTS.warningOfficeCode;
       $("settingWarningArea").value = state.settings.warningAreaCode || DEFAULTS.warningAreaCode;
+      $("settingWarningArea").dataset.municipality = normalizeLocationName(state.settings.warningMunicipality || "");
       $("settingWarningName").value = state.settings.warningAreaName || DEFAULTS.warningAreaName;
       $("settingWeatherMinutes").value = state.settings.weatherMinutes;
       $("settingAlertMinutes").value = state.settings.alertMinutes || DEFAULTS.alertMinutes;
@@ -1188,35 +1245,263 @@
       }
     }
 
+    function normalizeLocationName(value) {
+      return String(value || "").replace(/[\s　]+/g, "").trim();
+    }
+
+    function setMunicipalityStatus(message, type = "") {
+      const target = $("municipalityStatus");
+      if (!target) return;
+      target.textContent = message;
+      target.className = `form-message${type ? ` ${type}` : ""}`;
+    }
+
+    async function findMunicipality(query) {
+      const normalizedQuery = normalizeLocationName(query);
+      if (!normalizedQuery) throw new Error("市区町村名を入力してください");
+      if (!/[市区町村]$/.test(normalizedQuery)) {
+        throw new Error("市区町村名まで入力してください");
+      }
+
+      const url = new URL("https://msearch.gsi.go.jp/address-search/AddressSearch");
+      url.searchParams.set("q", normalizedQuery);
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const results = await response.json();
+      const candidates = (Array.isArray(results) ? results : []).filter((item) => {
+        const coordinates = item?.geometry?.coordinates;
+        return Array.isArray(coordinates)
+          && Number.isFinite(Number(coordinates[0]))
+          && Number.isFinite(Number(coordinates[1]))
+          && !item?.properties?.addressCode
+          && /[市区町村]$/.test(normalizeLocationName(item?.properties?.title));
+      });
+
+      const exact = candidates.find((item) => normalizeLocationName(item.properties?.title) === normalizedQuery);
+      const suffixMatches = candidates.filter((item) => normalizeLocationName(item.properties?.title).endsWith(normalizedQuery));
+      if (!exact && suffixMatches.length > 1) {
+        throw new Error("同名の地域があります。都道府県名から入力してください");
+      }
+
+      const selected = exact || suffixMatches[0] || candidates[0];
+      if (!selected) throw new Error("市区町村が見つかりませんでした");
+      const [longitude, latitude] = selected.geometry.coordinates.map(Number);
+      return {
+        municipality: selected.properties?.title || query.trim(),
+        latitude,
+        longitude
+      };
+    }
+
+    async function loadJmaAreas() {
+      if (!state.jmaAreasPromise) {
+        state.jmaAreasPromise = fetch("https://www.jma.go.jp/bosai/common/const/area.json", { cache: "no-store" })
+          .then((response) => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+          });
+      }
+      try {
+        return await state.jmaAreasPromise;
+      } catch (error) {
+        state.jmaAreasPromise = null;
+        throw error;
+      }
+    }
+
+    function getJmaOfficeCode(areas, class20Code) {
+      let code = String(class20Code || "");
+      const visited = new Set();
+      while (code && !visited.has(code)) {
+        if (areas.offices?.[code]) return code;
+        visited.add(code);
+        const item = areas.class20s?.[code] || areas.class15s?.[code] || areas.class10s?.[code];
+        code = item?.parent || "";
+      }
+      return "";
+    }
+
+    function municipalityPart(value) {
+      return normalizeLocationName(value)
+        .replace(/^(北海道|東京都|京都府|大阪府|.{2,3}県)/, "")
+        .replace(/^.*郡/, "");
+    }
+
+    async function findJmaWarningArea(location) {
+      const reverseUrl = new URL("https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress");
+      reverseUrl.search = new URLSearchParams({
+        lat: location.latitude,
+        lon: location.longitude
+      }).toString();
+      const [areas, reverseResponse] = await Promise.all([
+        loadJmaAreas(),
+        fetch(reverseUrl, { cache: "no-store" })
+      ]);
+      if (!reverseResponse.ok) throw new Error(`HTTP ${reverseResponse.status}`);
+      const reverseData = await reverseResponse.json();
+      const municipalityCode = String(reverseData.results?.muniCd || "");
+      if (!/^\d{5}$/.test(municipalityCode)) {
+        throw new Error("警報区域を特定できませんでした");
+      }
+
+      const directCode = `${municipalityCode}00`;
+      let selectedCodes = areas.class20s?.[directCode] ? [directCode] : [];
+      if (!selectedCodes.length) {
+        const locationName = municipalityPart(location.municipality);
+        const candidates = Object.entries(areas.class20s || {})
+          .filter(([code]) => code.startsWith(municipalityCode.slice(0, 2)))
+          .map(([code, item]) => {
+            const areaName = normalizeLocationName(item.name);
+            let score = 0;
+            if (locationName === areaName) score = 100;
+            else if (locationName.startsWith(areaName)) score = 90;
+            else if (areaName.startsWith(locationName)) score = 80;
+            else if (locationName.endsWith(areaName)) score = 70;
+            return { code, score };
+          })
+          .filter((candidate) => candidate.score > 0);
+        const bestScore = Math.max(0, ...candidates.map((candidate) => candidate.score));
+        selectedCodes = candidates
+          .filter((candidate) => candidate.score === bestScore)
+          .map((candidate) => candidate.code);
+      }
+
+      if (!selectedCodes.length) throw new Error("気象庁の警報区域が見つかりませんでした");
+      const officeCode = getJmaOfficeCode(areas, selectedCodes[0]);
+      if (!officeCode) throw new Error("気象庁の発表官署を特定できませんでした");
+      return {
+        officeCode,
+        areaCodes: selectedCodes,
+        areaName: location.municipality,
+        municipality: normalizeLocationName(location.municipality)
+      };
+    }
+
+    function applyWarningAreaToForm(warningArea) {
+      $("settingWarningOffice").value = warningArea.officeCode;
+      $("settingWarningArea").value = warningArea.areaCodes.join(",");
+      $("settingWarningArea").dataset.municipality = warningArea.municipality;
+      $("settingWarningName").value = warningArea.areaName;
+    }
+
+    async function resolveMunicipalityFromForm() {
+      const input = $("settingMunicipality");
+      const button = $("resolveMunicipality");
+      const query = input.value.trim();
+      button.disabled = true;
+      setMunicipalityStatus("地点と警報区域を検索中");
+      try {
+        const location = await findMunicipality(query);
+        const warningArea = await findJmaWarningArea(location);
+        input.value = location.municipality;
+        input.dataset.resolved = normalizeLocationName(location.municipality);
+        $("settingPlace").value = location.municipality;
+        $("settingLat").value = location.latitude.toFixed(6);
+        $("settingLon").value = location.longitude.toFixed(6);
+        applyWarningAreaToForm(warningArea);
+        setMunicipalityStatus(`${location.municipality}と警報区域を設定しました`, "success");
+        return location;
+      } catch (error) {
+        setMunicipalityStatus(error.message || "地点を検索できませんでした", "error");
+        throw error;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function warningAreaNeedsSync() {
+      const municipality = normalizeLocationName(state.settings.municipality);
+      const warningMunicipality = normalizeLocationName(state.settings.warningMunicipality);
+      return Boolean(municipality && municipality !== warningMunicipality);
+    }
+
+    async function syncSavedWarningArea() {
+      const warningArea = await findJmaWarningArea({
+        municipality: state.settings.municipality,
+        latitude: Number(state.settings.latitude),
+        longitude: Number(state.settings.longitude)
+      });
+      saveSettings({
+        ...state.settings,
+        warningOfficeCode: warningArea.officeCode,
+        warningAreaCode: warningArea.areaCodes.join(","),
+        warningAreaName: warningArea.areaName,
+        warningMunicipality: warningArea.municipality
+      });
+      applyWarningAreaToForm(warningArea);
+    }
+
     async function updateWeatherAlerts() {
-      const officeCode = String(state.settings.warningOfficeCode || DEFAULTS.warningOfficeCode).trim();
-      const areaCode = String(state.settings.warningAreaCode || DEFAULTS.warningAreaCode).trim();
       const target = $("weatherAlerts");
-      if (!officeCode || !areaCode || !target) return;
+      if (!target) return;
+
+      if (warningAreaNeedsSync()) {
+        target.innerHTML = `<span class="alert-pill">警報区域確認中</span>`;
+        try {
+          await syncSavedWarningArea();
+        } catch {
+          target.innerHTML = `<span class="alert-pill">警報区域設定不可</span>`;
+          return;
+        }
+      }
+
+      const officeCode = String(state.settings.warningOfficeCode || DEFAULTS.warningOfficeCode).trim();
+      const areaCodes = String(state.settings.warningAreaCode || DEFAULTS.warningAreaCode)
+        .split(/[\s,、]+/)
+        .map((code) => code.trim())
+        .filter(Boolean);
+      if (!officeCode || !areaCodes.length) return;
 
       target.innerHTML = `<span class="alert-pill">警報確認中</span>`;
       try {
-        const response = await fetch(`https://www.jma.go.jp/bosai/warning/data/warning/${officeCode}.json?ts=${Date.now()}`, { cache: "no-store" });
+        const response = await fetch(`https://www.jma.go.jp/bosai/warning/data/r8/${officeCode}.json?ts=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const area = data.areaTypes
-          ?.flatMap((areaType) => areaType.areas || [])
-          .find((candidate) => candidate.code === areaCode);
-        const activeWarnings = (area?.warnings || [])
-          .filter((warning) => warning.code && warning.status !== "解除")
-          .map(toWarningDisplay);
-
-        renderWeatherAlerts(activeWarnings, data.reportDatetime);
+        const payload = await response.json();
+        const records = Array.isArray(payload) ? payload : [payload];
+        const activeWarnings = [];
+        let reportDatetime = "";
+        records.forEach((record) => {
+          if (record.reportDatetime && (!reportDatetime || new Date(record.reportDatetime) > new Date(reportDatetime))) {
+            reportDatetime = record.reportDatetime;
+          }
+          const items = [
+            ...(record.warning?.class10Items || []),
+            ...(record.warning?.class20Items || [])
+          ];
+          items
+            .filter((item) => areaCodes.includes(String(item.areaCode)))
+            .flatMap((item) => item.kinds || [])
+            .filter((warning) => warning.code && warning.status !== "解除")
+            .forEach((warning) => activeWarnings.push(toWarningDisplay(warning, record.dataTypeCode)));
+        });
+        const uniqueWarnings = activeWarnings.filter((warning, index, list) =>
+          list.findIndex((candidate) => candidate.name === warning.name) === index
+        );
+        renderWeatherAlerts(uniqueWarnings, reportDatetime);
       } catch {
         target.innerHTML = `<span class="alert-pill">警報取得不可</span>`;
       }
     }
 
-    function toWarningDisplay(warning) {
+    function warningSignificanceLevel(warning) {
+      const levels = (warning.properties || [])
+        .flatMap((property) => property.significancyPart?.locals || [])
+        .map((local) => Number.parseInt(String(local.code || "").charAt(0), 10))
+        .filter((level) => level >= 2 && level <= 5);
+      return levels.length ? Math.max(...levels) : 0;
+    }
+
+    function toWarningDisplay(warning, dataTypeCode) {
+      const significanceLevel = warningSignificanceLevel(warning);
+      const hazard = JMA_LEVEL_HAZARDS[dataTypeCode];
+      const suffixes = { 2: "注意報", 3: "警報", 4: "危険警報", 5: "特別警報" };
+      const name = hazard && significanceLevel
+        ? `レベル${significanceLevel}${hazard}${suffixes[significanceLevel]}`
+        : JMA_WARNING_NAMES[warning.code] || `警報・注意報 ${warning.code}`;
       return {
         code: warning.code,
-        name: JMA_WARNING_NAMES[warning.code] || `警報・注意報 ${warning.code}`,
-        level: warningLevel(warning.code)
+        name,
+        level: warningLevel(warning.code, significanceLevel)
       };
     }
 
@@ -1235,9 +1520,9 @@
       ).join("");
     }
 
-    function warningLevel(code) {
-      if (["32", "33", "35", "36", "37", "38"].includes(code)) return "special";
-      if (["02", "03", "04", "05", "06", "07", "08"].includes(code)) return "alarm";
+    function warningLevel(code, significanceLevel = 0) {
+      if (significanceLevel >= 5 || ["32", "33", "35", "36", "37", "38", "59"].includes(code)) return "special";
+      if (significanceLevel >= 3 || ["02", "03", "04", "05", "06", "07", "08", "39", "49"].includes(code)) return "alarm";
       return "warn";
     }
 
@@ -1538,6 +1823,18 @@
       resetTimers();
       $("openSettings").addEventListener("click", () => $("settings").classList.add("open"));
       $("closeSettings").addEventListener("click", () => $("settings").classList.remove("open"));
+      $("settingMunicipality").addEventListener("input", (event) => {
+        event.currentTarget.dataset.resolved = "";
+        setMunicipalityStatus("");
+      });
+      ["settingWarningOffice", "settingWarningArea", "settingWarningName"].forEach((id) => {
+        $(id).addEventListener("input", () => {
+          $("settingWarningArea").dataset.municipality = "";
+        });
+      });
+      $("resolveMunicipality").addEventListener("click", () => {
+        resolveMunicipalityFromForm().catch(() => {});
+      });
       $("resetSettings").addEventListener("click", () => {
         saveSettings({ ...DEFAULTS });
         applyChrome();
@@ -1546,8 +1843,17 @@
         updateNews();
         resetTimers();
       });
-      $("settingsForm").addEventListener("submit", (event) => {
+      $("settingsForm").addEventListener("submit", async (event) => {
         event.preventDefault();
+        const municipalityInput = $("settingMunicipality");
+        const municipality = normalizeLocationName(municipalityInput.value);
+        if (municipality && municipalityInput.dataset.resolved !== municipality) {
+          try {
+            await resolveMunicipalityFromForm();
+          } catch {
+            return;
+          }
+        }
         saveSettings(readSettingsForm());
         applyChrome();
         updateWeather();
@@ -1566,11 +1872,13 @@
     function readSettingsForm() {
       return {
           place: $("settingPlace").value.trim() || DEFAULTS.place,
+          municipality: $("settingMunicipality").value.trim(),
           latitude: Number($("settingLat").value) || DEFAULTS.latitude,
           longitude: Number($("settingLon").value) || DEFAULTS.longitude,
           warningOfficeCode: $("settingWarningOffice").value.trim() || DEFAULTS.warningOfficeCode,
           warningAreaCode: $("settingWarningArea").value.trim() || DEFAULTS.warningAreaCode,
           warningAreaName: $("settingWarningName").value.trim() || DEFAULTS.warningAreaName,
+          warningMunicipality: $("settingWarningArea").dataset.municipality || "",
           weatherMinutes: Math.max(1, Number($("settingWeatherMinutes").value) || DEFAULTS.weatherMinutes),
           alertMinutes: Math.max(1, Number($("settingAlertMinutes").value) || DEFAULTS.alertMinutes),
           newsMinutes: Math.max(1, Number($("settingNewsMinutes").value) || DEFAULTS.newsMinutes),
