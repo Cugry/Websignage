@@ -245,6 +245,14 @@
       font-size: clamp(17px, 1.8vw, 25px);
     }
 
+    .temperature-source {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
     .metric-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1009,6 +1017,7 @@
                 </div>
               </div>
               <div class="condition" id="condition">--</div>
+              <div class="temperature-source" id="temperatureSource" aria-live="polite"></div>
             </div>
           </div>
           <div class="metric-grid">
@@ -1217,8 +1226,93 @@
       }).format(now);
     }
 
+    let temperatureRequest = 0;
+    let temperatureExpiry;
+    let amedasStations;
+    let weatherRequest = 0;
+
+    async function fetchWeatherData(url, asText = false) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await (asText ? response.text() : response.json());
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function stationDistance(latitude, longitude, station) {
+      const rad = Math.PI / 180;
+      const lat = station.lat[0] + station.lat[1] / 60;
+      const lon = station.lon[0] + station.lon[1] / 60;
+      const a = Math.sin((lat - latitude) * rad / 2) ** 2
+        + Math.cos(latitude * rad) * Math.cos(lat * rad)
+        * Math.sin((lon - longitude) * rad / 2) ** 2;
+      return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, a)));
+    }
+
+    function selectObservedTemperature(stations, observations, latitude, longitude) {
+      const nearby = Object.entries(stations)
+        .filter(([, station]) => Array.isArray(station.lat) && Array.isArray(station.lon))
+        .map(([id, station]) => ({ id, station, distance: stationDistance(latitude, longitude, station) }))
+        .filter((item) => item.distance <= 20)
+        .sort((a, b) => a.distance - b.distance);
+      for (const item of nearby) {
+        const value = observations[item.id]?.temp;
+        if (Array.isArray(value) && Number.isFinite(value[0]) && value[1] === 0) {
+          return { ...item, temperature: value[0] };
+        }
+      }
+      throw new Error("近隣の気温観測なし");
+    }
+
+    async function updateObservedTemperature(latitude, longitude) {
+      const request = ++temperatureRequest;
+      clearTimeout(temperatureExpiry);
+      $("temp").textContent = "--°";
+      $("temperatureSource").textContent = "気象庁 観測値を確認中";
+      try {
+        const [stations, latestText] = await Promise.all([
+          amedasStations || fetchWeatherData("https://www.jma.go.jp/bosai/amedas/const/amedastable.json"),
+          fetchWeatherData(`https://www.jma.go.jp/bosai/amedas/data/latest_time.txt?ts=${Date.now()}`, true)
+        ]);
+        amedasStations = stations;
+        const latest = latestText.trim();
+        const age = Date.now() - Date.parse(latest);
+        if (!Number.isFinite(age) || age < -300000 || age > 45 * 60000) throw new Error("観測データが古い");
+        const stamp = latest.slice(0, 19).replace(/[-:T]/g, "");
+        const observations = await fetchWeatherData(`https://www.jma.go.jp/bosai/amedas/data/map/${stamp}.json`);
+        const result = selectObservedTemperature(stations, observations, Number(latitude), Number(longitude));
+        if (request !== temperatureRequest) return;
+        $("temp").textContent = `${result.temperature.toFixed(1)}°`;
+        $("temperatureSource").textContent = `気象庁 ${result.station.kjName} ${latest.slice(11, 16)}観測`;
+        $("temperatureSource").title = `設定地点から約${result.distance.toFixed(1)} km`;
+        temperatureExpiry = setTimeout(() => {
+          if (request !== temperatureRequest) return;
+          $("temp").textContent = "--°";
+          $("temperatureSource").textContent = "気象庁 観測値の更新待ち";
+        }, Math.max(0, 45 * 60000 - (Date.now() - Date.parse(latest))));
+      } catch (error) {
+        if (request !== temperatureRequest) return;
+        $("temp").textContent = "--°";
+        $("temperatureSource").textContent = "気象庁 気温観測値を取得できません";
+        $("temperatureSource").title = "";
+      }
+    }
+
     async function updateWeather() {
+      const request = ++weatherRequest;
       const { latitude, longitude } = state.settings;
+      const useObservation = latitude >= 20 && latitude <= 46 && longitude >= 122 && longitude <= 154;
+      if (useObservation) updateObservedTemperature(latitude, longitude);
+      else {
+        ++temperatureRequest;
+        $("temp").textContent = "--°";
+        $("temperatureSource").textContent = "推定気温を確認中";
+        $("temperatureSource").title = "";
+      }
       $("weatherStatus").textContent = "更新中";
       try {
         const url = new URL("https://api.open-meteo.com/v1/forecast");
@@ -1228,15 +1322,18 @@
           daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
           timezone: "auto",
           wind_speed_unit: "ms",
+          temperature_unit: "celsius",
           forecast_days: "5"
         }).toString();
-        const data = await fetch(url).then((response) => {
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          return response.json();
-        });
+        const data = await fetchWeatherData(url);
+        if (request !== weatherRequest) return;
         const current = data.current;
         const [label, icon] = WEATHER_CODES[current.weather_code] || ["不明", "cloud"];
-        $("temp").textContent = `${Math.round(current.temperature_2m)}°`;
+        if (!useObservation) {
+          if (!Number.isFinite(current.temperature_2m)) throw new Error("気温なし");
+          $("temp").textContent = `${current.temperature_2m.toFixed(1)}°`;
+          $("temperatureSource").textContent = `Open-Meteo 推定値 ${current.time.slice(11, 16)}`;
+        }
         $("condition").textContent = label;
         $("humidity").textContent = `${Math.round(current.relative_humidity_2m)}%`;
         $("wind").textContent = `${Number(current.wind_speed_10m).toFixed(1)} m/s`;
@@ -1257,6 +1354,11 @@
         }).join("");
         $("weatherStatus").textContent = `更新 ${new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit" }).format(new Date())}`;
       } catch (error) {
+        if (request !== weatherRequest) return;
+        if (!useObservation) {
+          $("temp").textContent = "--°";
+          $("temperatureSource").textContent = "推定気温を取得できません";
+        }
         $("weatherStatus").innerHTML = `<span class="error">天気を取得できません</span>`;
       }
     }
@@ -1974,6 +2076,10 @@
       updateNews();
       resetTimers();
       document.addEventListener("keydown", handleRemoteNavigation, true);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) updateWeather();
+      });
+      window.addEventListener("online", updateWeather);
       $("openSettings").addEventListener("click", openSettingsDrawer);
       $("closeSettings").addEventListener("click", closeSettingsDrawer);
       $("settingMunicipality").addEventListener("input", (event) => {
